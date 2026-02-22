@@ -3,12 +3,13 @@ package connect
 import (
 	"encoding/binary"
 	"fmt"
-	didproto "github.com/qujing226/QLink/spec/gen"
-	"google.golang.org/protobuf/proto"
 	"net"
+
+	didv1 "github.com/qujing226/QLink/spec/gen/qlink/did/v1"
+	"google.golang.org/protobuf/proto"
 )
 
-func WritePacket(conn net.Conn, pkt *didproto.Packet) error {
+func WritePacket(conn net.Conn, pkt *didv1.Packet) error {
 	data, err := proto.Marshal(pkt)
 	if err != nil {
 		return err
@@ -21,7 +22,7 @@ func WritePacket(conn net.Conn, pkt *didproto.Packet) error {
 	return err
 }
 
-func ReadPacket(conn net.Conn) (*didproto.Packet, error) {
+func ReadPacket(conn net.Conn) (*didv1.Packet, error) {
 	var length uint32
 	err := binary.Read(conn, binary.BigEndian, &length)
 	if err != nil {
@@ -29,7 +30,7 @@ func ReadPacket(conn net.Conn) (*didproto.Packet, error) {
 	}
 	data := make([]byte, length)
 	_, err = conn.Read(data)
-	pkt := &didproto.Packet{}
+	pkt := &didv1.Packet{}
 	if err = proto.Unmarshal(data, pkt); err != nil {
 		return nil, fmt.Errorf("unmarshal error: %w", err)
 	}

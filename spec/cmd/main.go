@@ -4,113 +4,129 @@ import (
 	"fmt"
 	"time"
 
+	didv1 "github.com/qujing226/QLink/spec/gen/qlink/did/v1"
 	"github.com/qujing226/QLink/spec/pkg/blockchain"
 	"github.com/qujing226/QLink/spec/pkg/client"
 	"github.com/qujing226/QLink/spec/pkg/server"
 )
 
 const (
-	RelayPort = "19000"
+	RelayPort = "9000"
 	RelayAddr = "localhost:" + RelayPort
 )
 
 func main() {
-	fmt.Println("=== QLink Protocol Simulation Start ===")
+	fmt.Println("=== QLink Protocol Simulation: The Attack Scenario ===")
 
-	// 1. Start Relay Server
+	// 1. Start Relay
 	relay := server.NewRelayServer()
 	if err := relay.Start(RelayPort); err != nil {
 		panic(err)
 	}
 	defer relay.Stop()
-	time.Sleep(100 * time.Millisecond) // Wait for relay to bind
+	time.Sleep(100 * time.Millisecond)
 
-	// 2. Setup Shared Infrastructure (Blockchain)
-	// Latency = 500ms to simulate real-world blockchain slowness
-	simChain := blockchain.NewSimulatedChain(500 * time.Millisecond)
+	// 2. Setup Oracle (The Authority)
+	// Latency = 500ms to allow Speculative Window
+	oracle := blockchain.NewOracle(500 * time.Millisecond)
 
-	// Alice and Bob share the same view of the blockchain (and cache logic)
-	// In reality, they would have separate local caches.
-	// Let's give them separate caches wrapping the SAME chain.
-	aliceCache := blockchain.NewOptimisticCache(simChain, onMismatch("Alice"))
-	bobCache := blockchain.NewOptimisticCache(simChain, onMismatch("Bob"))
+	// In our refactored client.go, Client injects its own callback via a setter?
+	// Ah, in client.go NewClient: "assume main.go responsible for injection".
+	// Let's fix this wiring.
+	// We need a way to link the Cache callback to the Client instance.
+	// Since Client is created AFTER Cache, we can use a closure proxy.
+	
+	var aliceClient *client.Client
+	var bobClient   *client.Client
 
-	// 3. Initialize Clients
-	// Bob (Responder)
-	bob, err := client.NewClient("did:qlink:bob", bobCache, RelayAddr)
-	if err != nil {
-		panic(err)
-	}
-	bob.OnMessage = func(sender string, msg []byte) {
-		fmt.Printf("[Bob] Decrypted MSG from %s: '%s'\n", sender, string(msg))
-	}
-	if err := bob.Start(); err != nil {
-		panic(err)
-	}
+	aliceCache := blockchain.NewOptimisticCache(oracle, func(did string, c, f []byte) {
+		if aliceClient != nil {
+			aliceClient.OnChainVerification(did, c, f)
+		}
+	})
+	
+	bobCache := blockchain.NewOptimisticCache(oracle, func(did string, c, f []byte) {
+		if bobClient != nil {
+			bobClient.OnChainVerification(did, c, f)
+		}
+	})
 
-	// Alice (Initiator)
-	alice, err := client.NewClient("did:qlink:alice", aliceCache, RelayAddr)
-	if err != nil {
-		panic(err)
+	// 3. Init Clients
+	var err error
+	bobClient, err = client.NewClient("did:qlink:bob", bobCache, RelayAddr)
+	if err != nil { panic(err) }
+	bobClient.OnMessage = func(sender string, msg []byte) {
+		fmt.Printf("✅ [Bob App] RECEIVED: '%s'\n", string(msg))
 	}
-	alice.OnMessage = func(sender string, msg []byte) {
-		fmt.Printf("[Alice] Decrypted MSG from %s: '%s'\n", sender, string(msg))
-	}
-	if err := alice.Start(); err != nil {
-		panic(err)
-	}
+	bobClient.Start()
 
-	time.Sleep(500 * time.Millisecond) // Wait for network stabilization
+	aliceClient, err = client.NewClient("did:qlink:alice", aliceCache, RelayAddr)
+	if err != nil { panic(err) }
+	aliceClient.OnMessage = func(sender string, msg []byte) {
+		fmt.Printf("✅ [Alice App] RECEIVED: '%s'\n", string(msg))
+	}
+	aliceClient.Start()
+
+	time.Sleep(500 * time.Millisecond)
 
 	// =========================================================================
-	// Experiment 1: Cold Start Handshake (Chain Lookup)
+	// Phase 1: Warm-up (Establish valid cache)
 	// =========================================================================
-	fmt.Println("\n--- Experiment 1: Cold Start Handshake (Expect > 500ms latency) ---")
+	fmt.Println("\n--- Phase 1: Warm-up (Populating Cache) ---")
+	if err := aliceClient.Handshake("did:qlink:bob"); err != nil {
+		panic(err)
+	}
+	// Wait for background verification to complete and cache to be marked valid
+	time.Sleep(1 * time.Second) 
+	fmt.Println(">>> Phase 1 Complete. Caches are warm.")
+
+	// =========================================================================
+	// Phase 2: The Attack (Oracle Mutation)
+	// =========================================================================
+	fmt.Println("\n--- Phase 2: The Attack (Oracle Mutation) ---")
+	fmt.Println(">>> Simulating Bob's key compromise/rotation on chain...")
+	// Attack: Bob's key changes on chain!
+	// Alice doesn't know yet. Her cache has the OLD key.
+	if err := oracle.UpdateDID("did:qlink:bob"); err != nil {
+		panic(err)
+	}
+
+	// =========================================================================
+	// Phase 3: Speculative Execution under Attack
+	// =========================================================================
+	fmt.Println("\n--- Phase 3: Speculative Handshake (Using Stale Cache) ---")
+	// Alice initiates handshake using STALE cache (Fast Path)
 	start := time.Now()
-
-	if err := alice.Handshake("did:qlink:bob"); err != nil {
-		panic(err)
+	if err := aliceClient.Handshake("did:qlink:bob"); err != nil {
+		fmt.Printf("Handshake failed immediately: %v\n", err)
+	} else {
+		fmt.Printf(">>> Handshake 2 (Speculative) Finished in %v\n", time.Since(start))
 	}
 
-	duration := time.Since(start)
-	fmt.Printf(">>> Handshake 1 Finished in %v\n", duration)
+	// Alice sends a secret message immediately (Optimistic Send)
+	fmt.Println(">>> Alice sends 'Secret Payload' (Optimistically)...")
+	// Use manual SendPacket for more granular control if needed, but Client.SendMessage works.
+	aliceClient.SendMessage("My Secret Payload")
 
+	fmt.Println(">>> Waiting for Background Verification (500ms)...")
+	
 	// =========================================================================
-	// Experiment 2: Ratchet Communication
+	// Phase 4: The Truth Revealed (Eventual Consistency)
 	// =========================================================================
-	fmt.Println("\n--- Experiment 2: Secure Communication & Ratchet ---")
-
-	// Msg 1
-	fmt.Println(">>> Alice sending 'Msg 1'...")
-	alice.SendMessage("Hello Bob, this is Message 1")
-	time.Sleep(100 * time.Millisecond)
-
-	// Msg 2
-	fmt.Println(">>> Alice sending 'Msg 2'...")
-	alice.SendMessage("And this is Message 2 (Keys should have evolved)")
-	time.Sleep(100 * time.Millisecond)
-
-	// =========================================================================
-	// Experiment 3: Optimistic Cache (Session Resumption)
-	// =========================================================================
-	fmt.Println("\n--- Experiment 3: Warm Handshake (Optimistic Cache) ---")
-	// Simulate a new handshake request (e.g., previous session expired or new device)
-	// Alice already has Bob's doc in her cache from Exp 1.
-
-	start = time.Now()
-
-	if err := alice.Handshake("did:qlink:bob"); err != nil {
-		panic(err)
-	}
-
-	duration = time.Since(start)
-	fmt.Printf(">>> Handshake 2 Finished in %v (Should be near instant)\n", duration)
-
-	fmt.Println("\n=== Simulation Complete ===")
+	time.Sleep(1 * time.Second)
+	
+	fmt.Println("\n--- Simulation Complete ---")
+	fmt.Println("Check the logs above:")
+	fmt.Println("1. Did Alice report 'CRITICAL: Chain mismatch'?")
+	fmt.Println("2. Did Bob print 'RECEIVED: My Secret Payload'? (He SHOULD NOT)")
 }
 
-func onMismatch(who string) blockchain.VerificationCallback {
-	return func(did string, cached, fresh []byte) {
-		fmt.Printf("[%s] ALERT: Blockchain Mismatch detected for %s! Possible Attack!\n", who, did)
+// Helper to manually construct header (used by relay internally, but main.go uses client lib)
+// No changes needed here as client lib handles packet construction.
+func newHeader(from, to string) *didv1.Header {
+	return &didv1.Header{
+		Timestamp: time.Now().UnixMilli(),
+		FromDid:   from,
+		ToDid:     to,
 	}
 }

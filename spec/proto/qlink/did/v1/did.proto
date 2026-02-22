@@ -1,0 +1,98 @@
+syntax = "proto3";
+
+package qlink.did.v1;
+
+import "buf/validate/validate.proto";
+
+option go_package = "github.com/qujing226/QLink/spec/gen/qlink/did/v1;didv1";
+
+/* =========================================================================
+ * QLink AKE Envelope
+ * ========================================================================= */
+
+message Packet {
+  Header header = 1 [(buf.validate.field).required = true]; 
+
+  oneof payload {
+    option (buf.validate.oneof).required = true;
+
+    KEMInit kem_init = 10;
+    KEMConfirm kem_confirm = 11;
+    SecureMessage secure_message = 12;
+    Status status = 13;
+
+    // Infrastructure Extension
+    DIDDocumentRequest did_request = 14;
+    DIDDocumentResponse did_response = 15;
+  }
+}
+
+/* =========================================================================
+ * Common Structures
+ * ========================================================================= */
+
+message Header {
+  string request_id = 1 [(buf.validate.field).string.uuid = true];
+  string from_did   = 2 [(buf.validate.field).string.pattern = "^did:[a-z0-9]+:.*$"];
+  string to_did     = 3 [(buf.validate.field).string.pattern = "^did:[a-z0-9]+:.*$"];
+  int64  timestamp  = 4 [(buf.validate.field).int64.gt = 0];
+}
+
+message Status {
+  string reply_to_id = 1 [(buf.validate.field).string.uuid = true];
+
+  // Fixed Enum names to pass Buf Lint
+  enum Code {
+    CODE_UNSPECIFIED               = 0;
+    CODE_SUCCESS                   = 1;
+    CODE_ERROR_VERIFICATION_FAILED = 2; 
+    CODE_ERROR_DECRYPTION_FAILED   = 3;
+    CODE_ERROR_PROTOCOL_VIOLATION  = 4; 
+  }
+  Code   code    = 2;
+  string message = 3;
+}
+
+// Fixed Enum names to pass Buf Lint
+enum SessionState {
+  SESSION_STATE_UNSPECIFIED = 0; 
+  SESSION_STATE_IDLE        = 1; 
+  SESSION_STATE_SPECULATIVE = 2; 
+  SESSION_STATE_VERIFIED    = 3; 
+  SESSION_STATE_ABORTED     = 4; 
+}
+
+/* =========================================================================
+ * Handshake & Secure Transport
+ * ========================================================================= */
+
+message KEMInit {
+  bytes ct        = 1 [(buf.validate.field).bytes.len = 1088]; 
+  bytes nonce     = 2 [(buf.validate.field).bytes.len = 32];   
+  bytes signature = 3 [(buf.validate.field).required = true];  
+}
+
+message KEMConfirm {
+  bytes nonce_hash = 1 [(buf.validate.field).bytes.len = 32];   
+  bytes signature  = 2 [(buf.validate.field).required = true];  
+}
+
+message SecureMessage {
+  uint64 sequence_number = 1;                                      
+  bytes  ciphertext      = 2 [(buf.validate.field).required = true]; 
+  bytes  nonce           = 3 [(buf.validate.field).bytes.len = 12];  
+  bytes  tag             = 4 [(buf.validate.field).bytes.len = 16];  
+}
+
+/* =========================================================================
+ * Infrastructure Extensions
+ * ========================================================================= */
+
+message DIDDocumentRequest {
+  string target_did = 1;
+}
+
+message DIDDocumentResponse {
+  bytes document = 1; 
+  string error = 2;
+}

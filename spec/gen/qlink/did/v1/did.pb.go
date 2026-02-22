@@ -2,9 +2,9 @@
 // versions:
 // 	protoc-gen-go v1.36.10
 // 	protoc        (unknown)
-// source: did.proto
+// source: qlink/did/v1/did.proto
 
-package didproto
+package didv1
 
 import (
 	_ "buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go/buf/validate"
@@ -22,32 +22,32 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// SessionState defines the formal lifecycle of a QLink session.
+// Fixed Enum names to pass Buf Lint
 type SessionState int32
 
 const (
-	SessionState_STATE_IDLE        SessionState = 0 // Initial state
-	SessionState_STATE_RESOLVING   SessionState = 1 // Blocking on chain resolution (Slow Path)
-	SessionState_STATE_SPECULATIVE SessionState = 2 // Optimistic execution based on cache (Fast Path)
-	SessionState_STATE_VERIFIED    SessionState = 3 // Cryptographically verified against on-chain trust anchor
-	SessionState_STATE_COMPROMISED SessionState = 4 // Security violation detected (Rollback triggered)
+	SessionState_SESSION_STATE_UNSPECIFIED SessionState = 0
+	SessionState_SESSION_STATE_IDLE        SessionState = 1
+	SessionState_SESSION_STATE_SPECULATIVE SessionState = 2
+	SessionState_SESSION_STATE_VERIFIED    SessionState = 3
+	SessionState_SESSION_STATE_ABORTED     SessionState = 4
 )
 
 // Enum value maps for SessionState.
 var (
 	SessionState_name = map[int32]string{
-		0: "STATE_IDLE",
-		1: "STATE_RESOLVING",
-		2: "STATE_SPECULATIVE",
-		3: "STATE_VERIFIED",
-		4: "STATE_COMPROMISED",
+		0: "SESSION_STATE_UNSPECIFIED",
+		1: "SESSION_STATE_IDLE",
+		2: "SESSION_STATE_SPECULATIVE",
+		3: "SESSION_STATE_VERIFIED",
+		4: "SESSION_STATE_ABORTED",
 	}
 	SessionState_value = map[string]int32{
-		"STATE_IDLE":        0,
-		"STATE_RESOLVING":   1,
-		"STATE_SPECULATIVE": 2,
-		"STATE_VERIFIED":    3,
-		"STATE_COMPROMISED": 4,
+		"SESSION_STATE_UNSPECIFIED": 0,
+		"SESSION_STATE_IDLE":        1,
+		"SESSION_STATE_SPECULATIVE": 2,
+		"SESSION_STATE_VERIFIED":    3,
+		"SESSION_STATE_ABORTED":     4,
 	}
 )
 
@@ -62,11 +62,11 @@ func (x SessionState) String() string {
 }
 
 func (SessionState) Descriptor() protoreflect.EnumDescriptor {
-	return file_did_proto_enumTypes[0].Descriptor()
+	return file_qlink_did_v1_did_proto_enumTypes[0].Descriptor()
 }
 
 func (SessionState) Type() protoreflect.EnumType {
-	return &file_did_proto_enumTypes[0]
+	return &file_qlink_did_v1_did_proto_enumTypes[0]
 }
 
 func (x SessionState) Number() protoreflect.EnumNumber {
@@ -75,34 +75,35 @@ func (x SessionState) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use SessionState.Descriptor instead.
 func (SessionState) EnumDescriptor() ([]byte, []int) {
-	return file_did_proto_rawDescGZIP(), []int{0}
+	return file_qlink_did_v1_did_proto_rawDescGZIP(), []int{0}
 }
 
+// Fixed Enum names to pass Buf Lint
 type Status_Code int32
 
 const (
-	Status_SUCCESS                   Status_Code = 0
-	Status_ERROR_GENERIC             Status_Code = 1
-	Status_ERROR_VERIFICATION_FAILED Status_Code = 2 // Signature or hash check failed
-	Status_ERROR_DID_NOT_FOUND       Status_Code = 3 // DID resolution failed
-	Status_ERROR_DECRYPTION_FAILED   Status_Code = 4 // Kyber or AES decryption failed
+	Status_CODE_UNSPECIFIED               Status_Code = 0
+	Status_CODE_SUCCESS                   Status_Code = 1
+	Status_CODE_ERROR_VERIFICATION_FAILED Status_Code = 2
+	Status_CODE_ERROR_DECRYPTION_FAILED   Status_Code = 3
+	Status_CODE_ERROR_PROTOCOL_VIOLATION  Status_Code = 4
 )
 
 // Enum value maps for Status_Code.
 var (
 	Status_Code_name = map[int32]string{
-		0: "SUCCESS",
-		1: "ERROR_GENERIC",
-		2: "ERROR_VERIFICATION_FAILED",
-		3: "ERROR_DID_NOT_FOUND",
-		4: "ERROR_DECRYPTION_FAILED",
+		0: "CODE_UNSPECIFIED",
+		1: "CODE_SUCCESS",
+		2: "CODE_ERROR_VERIFICATION_FAILED",
+		3: "CODE_ERROR_DECRYPTION_FAILED",
+		4: "CODE_ERROR_PROTOCOL_VIOLATION",
 	}
 	Status_Code_value = map[string]int32{
-		"SUCCESS":                   0,
-		"ERROR_GENERIC":             1,
-		"ERROR_VERIFICATION_FAILED": 2,
-		"ERROR_DID_NOT_FOUND":       3,
-		"ERROR_DECRYPTION_FAILED":   4,
+		"CODE_UNSPECIFIED":               0,
+		"CODE_SUCCESS":                   1,
+		"CODE_ERROR_VERIFICATION_FAILED": 2,
+		"CODE_ERROR_DECRYPTION_FAILED":   3,
+		"CODE_ERROR_PROTOCOL_VIOLATION":  4,
 	}
 )
 
@@ -117,11 +118,11 @@ func (x Status_Code) String() string {
 }
 
 func (Status_Code) Descriptor() protoreflect.EnumDescriptor {
-	return file_did_proto_enumTypes[1].Descriptor()
+	return file_qlink_did_v1_did_proto_enumTypes[1].Descriptor()
 }
 
 func (Status_Code) Type() protoreflect.EnumType {
-	return &file_did_proto_enumTypes[1]
+	return &file_qlink_did_v1_did_proto_enumTypes[1]
 }
 
 func (x Status_Code) Number() protoreflect.EnumNumber {
@@ -130,24 +131,20 @@ func (x Status_Code) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use Status_Code.Descriptor instead.
 func (Status_Code) EnumDescriptor() ([]byte, []int) {
-	return file_did_proto_rawDescGZIP(), []int{2, 0}
+	return file_qlink_did_v1_did_proto_rawDescGZIP(), []int{2, 0}
 }
 
-// Packet represents the unmarshaled body of a Length-Prefixed TCP frame.
 type Packet struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// Common header for routing, tracing, and context binding.
-	Header *Header `protobuf:"bytes,1,opt,name=header,proto3" json:"header,omitempty"`
-	// Mutually exclusive payload types.
-	//
+	state  protoimpl.MessageState `protogen:"open.v1"`
+	Header *Header                `protobuf:"bytes,1,opt,name=header,proto3" json:"header,omitempty"`
 	// Types that are valid to be assigned to Payload:
 	//
 	//	*Packet_KemInit
 	//	*Packet_KemConfirm
 	//	*Packet_SecureMessage
+	//	*Packet_Status
 	//	*Packet_DidRequest
 	//	*Packet_DidResponse
-	//	*Packet_Status
 	Payload       isPacket_Payload `protobuf_oneof:"payload"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -155,7 +152,7 @@ type Packet struct {
 
 func (x *Packet) Reset() {
 	*x = Packet{}
-	mi := &file_did_proto_msgTypes[0]
+	mi := &file_qlink_did_v1_did_proto_msgTypes[0]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -167,7 +164,7 @@ func (x *Packet) String() string {
 func (*Packet) ProtoMessage() {}
 
 func (x *Packet) ProtoReflect() protoreflect.Message {
-	mi := &file_did_proto_msgTypes[0]
+	mi := &file_qlink_did_v1_did_proto_msgTypes[0]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -180,7 +177,7 @@ func (x *Packet) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Packet.ProtoReflect.Descriptor instead.
 func (*Packet) Descriptor() ([]byte, []int) {
-	return file_did_proto_rawDescGZIP(), []int{0}
+	return file_qlink_did_v1_did_proto_rawDescGZIP(), []int{0}
 }
 
 func (x *Packet) GetHeader() *Header {
@@ -224,6 +221,15 @@ func (x *Packet) GetSecureMessage() *SecureMessage {
 	return nil
 }
 
+func (x *Packet) GetStatus() *Status {
+	if x != nil {
+		if x, ok := x.Payload.(*Packet_Status); ok {
+			return x.Status
+		}
+	}
+	return nil
+}
+
 func (x *Packet) GetDidRequest() *DIDDocumentRequest {
 	if x != nil {
 		if x, ok := x.Payload.(*Packet_DidRequest); ok {
@@ -242,41 +248,33 @@ func (x *Packet) GetDidResponse() *DIDDocumentResponse {
 	return nil
 }
 
-func (x *Packet) GetStatus() *Status {
-	if x != nil {
-		if x, ok := x.Payload.(*Packet_Status); ok {
-			return x.Status
-		}
-	}
-	return nil
-}
-
 type isPacket_Payload interface {
 	isPacket_Payload()
 }
 
 type Packet_KemInit struct {
-	KemInit *KEMInit `protobuf:"bytes,10,opt,name=kem_init,json=kemInit,proto3,oneof"` // Step 1: Handshake Initiation
+	KemInit *KEMInit `protobuf:"bytes,10,opt,name=kem_init,json=kemInit,proto3,oneof"`
 }
 
 type Packet_KemConfirm struct {
-	KemConfirm *KEMConfirm `protobuf:"bytes,11,opt,name=kem_confirm,json=kemConfirm,proto3,oneof"` // Step 2: Handshake Confirmation
+	KemConfirm *KEMConfirm `protobuf:"bytes,11,opt,name=kem_confirm,json=kemConfirm,proto3,oneof"`
 }
 
 type Packet_SecureMessage struct {
-	SecureMessage *SecureMessage `protobuf:"bytes,12,opt,name=secure_message,json=secureMessage,proto3,oneof"` // Step 3: Encrypted Communication
-}
-
-type Packet_DidRequest struct {
-	DidRequest *DIDDocumentRequest `protobuf:"bytes,13,opt,name=did_request,json=didRequest,proto3,oneof"` // Infrastructure: Query DID
-}
-
-type Packet_DidResponse struct {
-	DidResponse *DIDDocumentResponse `protobuf:"bytes,14,opt,name=did_response,json=didResponse,proto3,oneof"` // Infrastructure: Return DID
+	SecureMessage *SecureMessage `protobuf:"bytes,12,opt,name=secure_message,json=secureMessage,proto3,oneof"`
 }
 
 type Packet_Status struct {
-	Status *Status `protobuf:"bytes,15,opt,name=status,proto3,oneof"` // Generic status/error response
+	Status *Status `protobuf:"bytes,13,opt,name=status,proto3,oneof"`
+}
+
+type Packet_DidRequest struct {
+	// Infrastructure Extension
+	DidRequest *DIDDocumentRequest `protobuf:"bytes,14,opt,name=did_request,json=didRequest,proto3,oneof"`
+}
+
+type Packet_DidResponse struct {
+	DidResponse *DIDDocumentResponse `protobuf:"bytes,15,opt,name=did_response,json=didResponse,proto3,oneof"`
 }
 
 func (*Packet_KemInit) isPacket_Payload() {}
@@ -285,25 +283,25 @@ func (*Packet_KemConfirm) isPacket_Payload() {}
 
 func (*Packet_SecureMessage) isPacket_Payload() {}
 
+func (*Packet_Status) isPacket_Payload() {}
+
 func (*Packet_DidRequest) isPacket_Payload() {}
 
 func (*Packet_DidResponse) isPacket_Payload() {}
 
-func (*Packet_Status) isPacket_Payload() {}
-
 type Header struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	RequestId     string                 `protobuf:"bytes,1,opt,name=request_id,json=requestId,proto3" json:"request_id,omitempty"` // UUID for request tracing
-	FromDid       string                 `protobuf:"bytes,2,opt,name=from_did,json=fromDid,proto3" json:"from_did,omitempty"`       // Sender DID
-	ToDid         string                 `protobuf:"bytes,3,opt,name=to_did,json=toDid,proto3" json:"to_did,omitempty"`             // Receiver DID (for Relay routing)
-	Timestamp     int64                  `protobuf:"varint,4,opt,name=timestamp,proto3" json:"timestamp,omitempty"`                 // Unix timestamp (ms) for replay protection
+	RequestId     string                 `protobuf:"bytes,1,opt,name=request_id,json=requestId,proto3" json:"request_id,omitempty"`
+	FromDid       string                 `protobuf:"bytes,2,opt,name=from_did,json=fromDid,proto3" json:"from_did,omitempty"`
+	ToDid         string                 `protobuf:"bytes,3,opt,name=to_did,json=toDid,proto3" json:"to_did,omitempty"`
+	Timestamp     int64                  `protobuf:"varint,4,opt,name=timestamp,proto3" json:"timestamp,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *Header) Reset() {
 	*x = Header{}
-	mi := &file_did_proto_msgTypes[1]
+	mi := &file_qlink_did_v1_did_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -315,7 +313,7 @@ func (x *Header) String() string {
 func (*Header) ProtoMessage() {}
 
 func (x *Header) ProtoReflect() protoreflect.Message {
-	mi := &file_did_proto_msgTypes[1]
+	mi := &file_qlink_did_v1_did_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -328,7 +326,7 @@ func (x *Header) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Header.ProtoReflect.Descriptor instead.
 func (*Header) Descriptor() ([]byte, []int) {
-	return file_did_proto_rawDescGZIP(), []int{1}
+	return file_qlink_did_v1_did_proto_rawDescGZIP(), []int{1}
 }
 
 func (x *Header) GetRequestId() string {
@@ -359,19 +357,18 @@ func (x *Header) GetTimestamp() int64 {
 	return 0
 }
 
-// Unified status response for all request types.
 type Status struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	ReplyToId     string                 `protobuf:"bytes,1,opt,name=reply_to_id,json=replyToId,proto3" json:"reply_to_id,omitempty"` // ID of the request being responded to
-	Code          Status_Code            `protobuf:"varint,2,opt,name=code,proto3,enum=didproto.Status_Code" json:"code,omitempty"`   // Result code
-	Message       string                 `protobuf:"bytes,3,opt,name=message,proto3" json:"message,omitempty"`                        // Detailed error message (empty if SUCCESS)
+	ReplyToId     string                 `protobuf:"bytes,1,opt,name=reply_to_id,json=replyToId,proto3" json:"reply_to_id,omitempty"`
+	Code          Status_Code            `protobuf:"varint,2,opt,name=code,proto3,enum=qlink.did.v1.Status_Code" json:"code,omitempty"`
+	Message       string                 `protobuf:"bytes,3,opt,name=message,proto3" json:"message,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *Status) Reset() {
 	*x = Status{}
-	mi := &file_did_proto_msgTypes[2]
+	mi := &file_qlink_did_v1_did_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -383,7 +380,7 @@ func (x *Status) String() string {
 func (*Status) ProtoMessage() {}
 
 func (x *Status) ProtoReflect() protoreflect.Message {
-	mi := &file_did_proto_msgTypes[2]
+	mi := &file_qlink_did_v1_did_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -396,7 +393,7 @@ func (x *Status) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Status.ProtoReflect.Descriptor instead.
 func (*Status) Descriptor() ([]byte, []int) {
-	return file_did_proto_rawDescGZIP(), []int{2}
+	return file_qlink_did_v1_did_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *Status) GetReplyToId() string {
@@ -410,7 +407,7 @@ func (x *Status) GetCode() Status_Code {
 	if x != nil {
 		return x.Code
 	}
-	return Status_SUCCESS
+	return Status_CODE_UNSPECIFIED
 }
 
 func (x *Status) GetMessage() string {
@@ -422,16 +419,16 @@ func (x *Status) GetMessage() string {
 
 type KEMInit struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Ct            []byte                 `protobuf:"bytes,1,opt,name=ct,proto3" json:"ct,omitempty"`               // Kyber768 encapsulated key (fixed 1088 bytes)
-	Nonce         []byte                 `protobuf:"bytes,2,opt,name=nonce,proto3" json:"nonce,omitempty"`         // Random nonce (32 bytes) for key derivation
-	Signature     []byte                 `protobuf:"bytes,3,opt,name=signature,proto3" json:"signature,omitempty"` // Sign(Header || ct || nonce) by Initiator
+	Ct            []byte                 `protobuf:"bytes,1,opt,name=ct,proto3" json:"ct,omitempty"`
+	Nonce         []byte                 `protobuf:"bytes,2,opt,name=nonce,proto3" json:"nonce,omitempty"`
+	Signature     []byte                 `protobuf:"bytes,3,opt,name=signature,proto3" json:"signature,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *KEMInit) Reset() {
 	*x = KEMInit{}
-	mi := &file_did_proto_msgTypes[3]
+	mi := &file_qlink_did_v1_did_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -443,7 +440,7 @@ func (x *KEMInit) String() string {
 func (*KEMInit) ProtoMessage() {}
 
 func (x *KEMInit) ProtoReflect() protoreflect.Message {
-	mi := &file_did_proto_msgTypes[3]
+	mi := &file_qlink_did_v1_did_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -456,7 +453,7 @@ func (x *KEMInit) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use KEMInit.ProtoReflect.Descriptor instead.
 func (*KEMInit) Descriptor() ([]byte, []int) {
-	return file_did_proto_rawDescGZIP(), []int{3}
+	return file_qlink_did_v1_did_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *KEMInit) GetCt() []byte {
@@ -482,15 +479,15 @@ func (x *KEMInit) GetSignature() []byte {
 
 type KEMConfirm struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	NonceHash     []byte                 `protobuf:"bytes,1,opt,name=nonce_hash,json=nonceHash,proto3" json:"nonce_hash,omitempty"` // SHA-256 hash of the received nonce
-	Signature     []byte                 `protobuf:"bytes,2,opt,name=signature,proto3" json:"signature,omitempty"`                  // Sign(Header || nonce_hash) by Responder
+	NonceHash     []byte                 `protobuf:"bytes,1,opt,name=nonce_hash,json=nonceHash,proto3" json:"nonce_hash,omitempty"`
+	Signature     []byte                 `protobuf:"bytes,2,opt,name=signature,proto3" json:"signature,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *KEMConfirm) Reset() {
 	*x = KEMConfirm{}
-	mi := &file_did_proto_msgTypes[4]
+	mi := &file_qlink_did_v1_did_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -502,7 +499,7 @@ func (x *KEMConfirm) String() string {
 func (*KEMConfirm) ProtoMessage() {}
 
 func (x *KEMConfirm) ProtoReflect() protoreflect.Message {
-	mi := &file_did_proto_msgTypes[4]
+	mi := &file_qlink_did_v1_did_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -515,7 +512,7 @@ func (x *KEMConfirm) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use KEMConfirm.ProtoReflect.Descriptor instead.
 func (*KEMConfirm) Descriptor() ([]byte, []int) {
-	return file_did_proto_rawDescGZIP(), []int{4}
+	return file_qlink_did_v1_did_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *KEMConfirm) GetNonceHash() []byte {
@@ -534,17 +531,17 @@ func (x *KEMConfirm) GetSignature() []byte {
 
 type SecureMessage struct {
 	state          protoimpl.MessageState `protogen:"open.v1"`
-	SequenceNumber uint64                 `protobuf:"varint,1,opt,name=sequence_number,json=sequenceNumber,proto3" json:"sequence_number,omitempty"` // Strictly increasing seq num to prevent reordering
-	Ciphertext     []byte                 `protobuf:"bytes,2,opt,name=ciphertext,proto3" json:"ciphertext,omitempty"`                                // AES-GCM encrypted payload
-	Nonce          []byte                 `protobuf:"bytes,3,opt,name=nonce,proto3" json:"nonce,omitempty"`                                          // AES-GCM nonce (standard 12 bytes)
-	Tag            []byte                 `protobuf:"bytes,4,opt,name=tag,proto3" json:"tag,omitempty"`                                              // AES-GCM auth tag (standard 16 bytes)
+	SequenceNumber uint64                 `protobuf:"varint,1,opt,name=sequence_number,json=sequenceNumber,proto3" json:"sequence_number,omitempty"`
+	Ciphertext     []byte                 `protobuf:"bytes,2,opt,name=ciphertext,proto3" json:"ciphertext,omitempty"`
+	Nonce          []byte                 `protobuf:"bytes,3,opt,name=nonce,proto3" json:"nonce,omitempty"`
+	Tag            []byte                 `protobuf:"bytes,4,opt,name=tag,proto3" json:"tag,omitempty"`
 	unknownFields  protoimpl.UnknownFields
 	sizeCache      protoimpl.SizeCache
 }
 
 func (x *SecureMessage) Reset() {
 	*x = SecureMessage{}
-	mi := &file_did_proto_msgTypes[5]
+	mi := &file_qlink_did_v1_did_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -556,7 +553,7 @@ func (x *SecureMessage) String() string {
 func (*SecureMessage) ProtoMessage() {}
 
 func (x *SecureMessage) ProtoReflect() protoreflect.Message {
-	mi := &file_did_proto_msgTypes[5]
+	mi := &file_qlink_did_v1_did_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -569,7 +566,7 @@ func (x *SecureMessage) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SecureMessage.ProtoReflect.Descriptor instead.
 func (*SecureMessage) Descriptor() ([]byte, []int) {
-	return file_did_proto_rawDescGZIP(), []int{5}
+	return file_qlink_did_v1_did_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *SecureMessage) GetSequenceNumber() uint64 {
@@ -602,14 +599,14 @@ func (x *SecureMessage) GetTag() []byte {
 
 type DIDDocumentRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	TargetDid     string                 `protobuf:"bytes,1,opt,name=target_did,json=targetDid,proto3" json:"target_did,omitempty"` // DID to lookup
+	TargetDid     string                 `protobuf:"bytes,1,opt,name=target_did,json=targetDid,proto3" json:"target_did,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *DIDDocumentRequest) Reset() {
 	*x = DIDDocumentRequest{}
-	mi := &file_did_proto_msgTypes[6]
+	mi := &file_qlink_did_v1_did_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -621,7 +618,7 @@ func (x *DIDDocumentRequest) String() string {
 func (*DIDDocumentRequest) ProtoMessage() {}
 
 func (x *DIDDocumentRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_did_proto_msgTypes[6]
+	mi := &file_qlink_did_v1_did_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -634,7 +631,7 @@ func (x *DIDDocumentRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DIDDocumentRequest.ProtoReflect.Descriptor instead.
 func (*DIDDocumentRequest) Descriptor() ([]byte, []int) {
-	return file_did_proto_rawDescGZIP(), []int{6}
+	return file_qlink_did_v1_did_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *DIDDocumentRequest) GetTargetDid() string {
@@ -645,19 +642,16 @@ func (x *DIDDocumentRequest) GetTargetDid() string {
 }
 
 type DIDDocumentResponse struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// Types that are valid to be assigned to Result:
-	//
-	//	*DIDDocumentResponse_Document
-	//	*DIDDocumentResponse_Error
-	Result        isDIDDocumentResponse_Result `protobuf_oneof:"result"`
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Document      []byte                 `protobuf:"bytes,1,opt,name=document,proto3" json:"document,omitempty"`
+	Error         string                 `protobuf:"bytes,2,opt,name=error,proto3" json:"error,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *DIDDocumentResponse) Reset() {
 	*x = DIDDocumentResponse{}
-	mi := &file_did_proto_msgTypes[7]
+	mi := &file_qlink_did_v1_did_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -669,7 +663,7 @@ func (x *DIDDocumentResponse) String() string {
 func (*DIDDocumentResponse) ProtoMessage() {}
 
 func (x *DIDDocumentResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_did_proto_msgTypes[7]
+	mi := &file_qlink_did_v1_did_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -682,83 +676,56 @@ func (x *DIDDocumentResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DIDDocumentResponse.ProtoReflect.Descriptor instead.
 func (*DIDDocumentResponse) Descriptor() ([]byte, []int) {
-	return file_did_proto_rawDescGZIP(), []int{7}
-}
-
-func (x *DIDDocumentResponse) GetResult() isDIDDocumentResponse_Result {
-	if x != nil {
-		return x.Result
-	}
-	return nil
+	return file_qlink_did_v1_did_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *DIDDocumentResponse) GetDocument() []byte {
 	if x != nil {
-		if x, ok := x.Result.(*DIDDocumentResponse_Document); ok {
-			return x.Document
-		}
+		return x.Document
 	}
 	return nil
 }
 
 func (x *DIDDocumentResponse) GetError() string {
 	if x != nil {
-		if x, ok := x.Result.(*DIDDocumentResponse_Error); ok {
-			return x.Error
-		}
+		return x.Error
 	}
 	return ""
 }
 
-type isDIDDocumentResponse_Result interface {
-	isDIDDocumentResponse_Result()
-}
+var File_qlink_did_v1_did_proto protoreflect.FileDescriptor
 
-type DIDDocumentResponse_Document struct {
-	Document []byte `protobuf:"bytes,1,opt,name=document,proto3,oneof"` // Serialized DID Document (JSON-LD)
-}
-
-type DIDDocumentResponse_Error struct {
-	Error string `protobuf:"bytes,2,opt,name=error,proto3,oneof"` // Error message if lookup failed
-}
-
-func (*DIDDocumentResponse_Document) isDIDDocumentResponse_Result() {}
-
-func (*DIDDocumentResponse_Error) isDIDDocumentResponse_Result() {}
-
-var File_did_proto protoreflect.FileDescriptor
-
-const file_did_proto_rawDesc = "" +
+const file_qlink_did_v1_did_proto_rawDesc = "" +
 	"\n" +
-	"\tdid.proto\x12\bdidproto\x1a\x1bbuf/validate/validate.proto\"\xa8\x03\n" +
-	"\x06Packet\x120\n" +
-	"\x06header\x18\x01 \x01(\v2\x10.didproto.HeaderB\x06\xbaH\x03\xc8\x01\x01R\x06header\x12.\n" +
+	"\x16qlink/did/v1/did.proto\x12\fqlink.did.v1\x1a\x1bbuf/validate/validate.proto\"\xc4\x03\n" +
+	"\x06Packet\x124\n" +
+	"\x06header\x18\x01 \x01(\v2\x14.qlink.did.v1.HeaderB\x06\xbaH\x03\xc8\x01\x01R\x06header\x122\n" +
 	"\bkem_init\x18\n" +
-	" \x01(\v2\x11.didproto.KEMInitH\x00R\akemInit\x127\n" +
-	"\vkem_confirm\x18\v \x01(\v2\x14.didproto.KEMConfirmH\x00R\n" +
-	"kemConfirm\x12@\n" +
-	"\x0esecure_message\x18\f \x01(\v2\x17.didproto.SecureMessageH\x00R\rsecureMessage\x12?\n" +
-	"\vdid_request\x18\r \x01(\v2\x1c.didproto.DIDDocumentRequestH\x00R\n" +
-	"didRequest\x12B\n" +
-	"\fdid_response\x18\x0e \x01(\v2\x1d.didproto.DIDDocumentResponseH\x00R\vdidResponse\x12*\n" +
-	"\x06status\x18\x0f \x01(\v2\x10.didproto.StatusH\x00R\x06statusB\x10\n" +
+	" \x01(\v2\x15.qlink.did.v1.KEMInitH\x00R\akemInit\x12;\n" +
+	"\vkem_confirm\x18\v \x01(\v2\x18.qlink.did.v1.KEMConfirmH\x00R\n" +
+	"kemConfirm\x12D\n" +
+	"\x0esecure_message\x18\f \x01(\v2\x1b.qlink.did.v1.SecureMessageH\x00R\rsecureMessage\x12.\n" +
+	"\x06status\x18\r \x01(\v2\x14.qlink.did.v1.StatusH\x00R\x06status\x12C\n" +
+	"\vdid_request\x18\x0e \x01(\v2 .qlink.did.v1.DIDDocumentRequestH\x00R\n" +
+	"didRequest\x12F\n" +
+	"\fdid_response\x18\x0f \x01(\v2!.qlink.did.v1.DIDDocumentResponseH\x00R\vdidResponseB\x10\n" +
 	"\apayload\x12\x05\xbaH\x02\b\x01\"\xc0\x01\n" +
 	"\x06Header\x12'\n" +
 	"\n" +
 	"request_id\x18\x01 \x01(\tB\b\xbaH\x05r\x03\xb0\x01\x01R\trequestId\x124\n" +
 	"\bfrom_did\x18\x02 \x01(\tB\x19\xbaH\x16r\x142\x12^did:[a-z0-9]+:.*$R\afromDid\x120\n" +
 	"\x06to_did\x18\x03 \x01(\tB\x19\xbaH\x16r\x142\x12^did:[a-z0-9]+:.*$R\x05toDid\x12%\n" +
-	"\ttimestamp\x18\x04 \x01(\x03B\a\xbaH\x04\"\x02 \x00R\ttimestamp\"\xf4\x01\n" +
+	"\ttimestamp\x18\x04 \x01(\x03B\a\xbaH\x04\"\x02 \x00R\ttimestamp\"\x95\x02\n" +
 	"\x06Status\x12(\n" +
-	"\vreply_to_id\x18\x01 \x01(\tB\b\xbaH\x05r\x03\xb0\x01\x01R\treplyToId\x12)\n" +
-	"\x04code\x18\x02 \x01(\x0e2\x15.didproto.Status.CodeR\x04code\x12\x18\n" +
-	"\amessage\x18\x03 \x01(\tR\amessage\"{\n" +
-	"\x04Code\x12\v\n" +
-	"\aSUCCESS\x10\x00\x12\x11\n" +
-	"\rERROR_GENERIC\x10\x01\x12\x1d\n" +
-	"\x19ERROR_VERIFICATION_FAILED\x10\x02\x12\x17\n" +
-	"\x13ERROR_DID_NOT_FOUND\x10\x03\x12\x1b\n" +
-	"\x17ERROR_DECRYPTION_FAILED\x10\x04\"h\n" +
+	"\vreply_to_id\x18\x01 \x01(\tB\b\xbaH\x05r\x03\xb0\x01\x01R\treplyToId\x12-\n" +
+	"\x04code\x18\x02 \x01(\x0e2\x19.qlink.did.v1.Status.CodeR\x04code\x12\x18\n" +
+	"\amessage\x18\x03 \x01(\tR\amessage\"\x97\x01\n" +
+	"\x04Code\x12\x14\n" +
+	"\x10CODE_UNSPECIFIED\x10\x00\x12\x10\n" +
+	"\fCODE_SUCCESS\x10\x01\x12\"\n" +
+	"\x1eCODE_ERROR_VERIFICATION_FAILED\x10\x02\x12 \n" +
+	"\x1cCODE_ERROR_DECRYPTION_FAILED\x10\x03\x12!\n" +
+	"\x1dCODE_ERROR_PROTOCOL_VIOLATION\x10\x04\"h\n" +
 	"\aKEMInit\x12\x18\n" +
 	"\x02ct\x18\x01 \x01(\fB\b\xbaH\x05z\x03h\xc0\bR\x02ct\x12\x1d\n" +
 	"\x05nonce\x18\x02 \x01(\fB\a\xbaH\x04z\x02h R\x05nonce\x12$\n" +
@@ -774,58 +741,55 @@ const file_did_proto_rawDesc = "" +
 	"ciphertext\x18\x02 \x01(\fB\x06\xbaH\x03\xc8\x01\x01R\n" +
 	"ciphertext\x12\x1d\n" +
 	"\x05nonce\x18\x03 \x01(\fB\a\xbaH\x04z\x02h\fR\x05nonce\x12\x19\n" +
-	"\x03tag\x18\x04 \x01(\fB\a\xbaH\x04z\x02h\x10R\x03tag\"N\n" +
-	"\x12DIDDocumentRequest\x128\n" +
+	"\x03tag\x18\x04 \x01(\fB\a\xbaH\x04z\x02h\x10R\x03tag\"3\n" +
+	"\x12DIDDocumentRequest\x12\x1d\n" +
 	"\n" +
-	"target_did\x18\x01 \x01(\tB\x19\xbaH\x16r\x142\x12^did:[a-z0-9]+:.*$R\ttargetDid\"\\\n" +
-	"\x13DIDDocumentResponse\x12\x1c\n" +
-	"\bdocument\x18\x01 \x01(\fH\x00R\bdocument\x12\x16\n" +
-	"\x05error\x18\x02 \x01(\tH\x00R\x05errorB\x0f\n" +
-	"\x06result\x12\x05\xbaH\x02\b\x01*u\n" +
-	"\fSessionState\x12\x0e\n" +
-	"\n" +
-	"STATE_IDLE\x10\x00\x12\x13\n" +
-	"\x0fSTATE_RESOLVING\x10\x01\x12\x15\n" +
-	"\x11STATE_SPECULATIVE\x10\x02\x12\x12\n" +
-	"\x0eSTATE_VERIFIED\x10\x03\x12\x15\n" +
-	"\x11STATE_COMPROMISED\x10\x04B\fZ\n" +
-	"./didprotob\x06proto3"
+	"target_did\x18\x01 \x01(\tR\ttargetDid\"G\n" +
+	"\x13DIDDocumentResponse\x12\x1a\n" +
+	"\bdocument\x18\x01 \x01(\fR\bdocument\x12\x14\n" +
+	"\x05error\x18\x02 \x01(\tR\x05error*\x9b\x01\n" +
+	"\fSessionState\x12\x1d\n" +
+	"\x19SESSION_STATE_UNSPECIFIED\x10\x00\x12\x16\n" +
+	"\x12SESSION_STATE_IDLE\x10\x01\x12\x1d\n" +
+	"\x19SESSION_STATE_SPECULATIVE\x10\x02\x12\x1a\n" +
+	"\x16SESSION_STATE_VERIFIED\x10\x03\x12\x19\n" +
+	"\x15SESSION_STATE_ABORTED\x10\x04B8Z6github.com/qujing226/QLink/spec/gen/qlink/did/v1;didv1b\x06proto3"
 
 var (
-	file_did_proto_rawDescOnce sync.Once
-	file_did_proto_rawDescData []byte
+	file_qlink_did_v1_did_proto_rawDescOnce sync.Once
+	file_qlink_did_v1_did_proto_rawDescData []byte
 )
 
-func file_did_proto_rawDescGZIP() []byte {
-	file_did_proto_rawDescOnce.Do(func() {
-		file_did_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_did_proto_rawDesc), len(file_did_proto_rawDesc)))
+func file_qlink_did_v1_did_proto_rawDescGZIP() []byte {
+	file_qlink_did_v1_did_proto_rawDescOnce.Do(func() {
+		file_qlink_did_v1_did_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_qlink_did_v1_did_proto_rawDesc), len(file_qlink_did_v1_did_proto_rawDesc)))
 	})
-	return file_did_proto_rawDescData
+	return file_qlink_did_v1_did_proto_rawDescData
 }
 
-var file_did_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
-var file_did_proto_msgTypes = make([]protoimpl.MessageInfo, 8)
-var file_did_proto_goTypes = []any{
-	(SessionState)(0),           // 0: didproto.SessionState
-	(Status_Code)(0),            // 1: didproto.Status.Code
-	(*Packet)(nil),              // 2: didproto.Packet
-	(*Header)(nil),              // 3: didproto.Header
-	(*Status)(nil),              // 4: didproto.Status
-	(*KEMInit)(nil),             // 5: didproto.KEMInit
-	(*KEMConfirm)(nil),          // 6: didproto.KEMConfirm
-	(*SecureMessage)(nil),       // 7: didproto.SecureMessage
-	(*DIDDocumentRequest)(nil),  // 8: didproto.DIDDocumentRequest
-	(*DIDDocumentResponse)(nil), // 9: didproto.DIDDocumentResponse
+var file_qlink_did_v1_did_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
+var file_qlink_did_v1_did_proto_msgTypes = make([]protoimpl.MessageInfo, 8)
+var file_qlink_did_v1_did_proto_goTypes = []any{
+	(SessionState)(0),           // 0: qlink.did.v1.SessionState
+	(Status_Code)(0),            // 1: qlink.did.v1.Status.Code
+	(*Packet)(nil),              // 2: qlink.did.v1.Packet
+	(*Header)(nil),              // 3: qlink.did.v1.Header
+	(*Status)(nil),              // 4: qlink.did.v1.Status
+	(*KEMInit)(nil),             // 5: qlink.did.v1.KEMInit
+	(*KEMConfirm)(nil),          // 6: qlink.did.v1.KEMConfirm
+	(*SecureMessage)(nil),       // 7: qlink.did.v1.SecureMessage
+	(*DIDDocumentRequest)(nil),  // 8: qlink.did.v1.DIDDocumentRequest
+	(*DIDDocumentResponse)(nil), // 9: qlink.did.v1.DIDDocumentResponse
 }
-var file_did_proto_depIdxs = []int32{
-	3, // 0: didproto.Packet.header:type_name -> didproto.Header
-	5, // 1: didproto.Packet.kem_init:type_name -> didproto.KEMInit
-	6, // 2: didproto.Packet.kem_confirm:type_name -> didproto.KEMConfirm
-	7, // 3: didproto.Packet.secure_message:type_name -> didproto.SecureMessage
-	8, // 4: didproto.Packet.did_request:type_name -> didproto.DIDDocumentRequest
-	9, // 5: didproto.Packet.did_response:type_name -> didproto.DIDDocumentResponse
-	4, // 6: didproto.Packet.status:type_name -> didproto.Status
-	1, // 7: didproto.Status.code:type_name -> didproto.Status.Code
+var file_qlink_did_v1_did_proto_depIdxs = []int32{
+	3, // 0: qlink.did.v1.Packet.header:type_name -> qlink.did.v1.Header
+	5, // 1: qlink.did.v1.Packet.kem_init:type_name -> qlink.did.v1.KEMInit
+	6, // 2: qlink.did.v1.Packet.kem_confirm:type_name -> qlink.did.v1.KEMConfirm
+	7, // 3: qlink.did.v1.Packet.secure_message:type_name -> qlink.did.v1.SecureMessage
+	4, // 4: qlink.did.v1.Packet.status:type_name -> qlink.did.v1.Status
+	8, // 5: qlink.did.v1.Packet.did_request:type_name -> qlink.did.v1.DIDDocumentRequest
+	9, // 6: qlink.did.v1.Packet.did_response:type_name -> qlink.did.v1.DIDDocumentResponse
+	1, // 7: qlink.did.v1.Status.code:type_name -> qlink.did.v1.Status.Code
 	8, // [8:8] is the sub-list for method output_type
 	8, // [8:8] is the sub-list for method input_type
 	8, // [8:8] is the sub-list for extension type_name
@@ -833,39 +797,35 @@ var file_did_proto_depIdxs = []int32{
 	0, // [0:8] is the sub-list for field type_name
 }
 
-func init() { file_did_proto_init() }
-func file_did_proto_init() {
-	if File_did_proto != nil {
+func init() { file_qlink_did_v1_did_proto_init() }
+func file_qlink_did_v1_did_proto_init() {
+	if File_qlink_did_v1_did_proto != nil {
 		return
 	}
-	file_did_proto_msgTypes[0].OneofWrappers = []any{
+	file_qlink_did_v1_did_proto_msgTypes[0].OneofWrappers = []any{
 		(*Packet_KemInit)(nil),
 		(*Packet_KemConfirm)(nil),
 		(*Packet_SecureMessage)(nil),
+		(*Packet_Status)(nil),
 		(*Packet_DidRequest)(nil),
 		(*Packet_DidResponse)(nil),
-		(*Packet_Status)(nil),
-	}
-	file_did_proto_msgTypes[7].OneofWrappers = []any{
-		(*DIDDocumentResponse_Document)(nil),
-		(*DIDDocumentResponse_Error)(nil),
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
-			RawDescriptor: unsafe.Slice(unsafe.StringData(file_did_proto_rawDesc), len(file_did_proto_rawDesc)),
+			RawDescriptor: unsafe.Slice(unsafe.StringData(file_qlink_did_v1_did_proto_rawDesc), len(file_qlink_did_v1_did_proto_rawDesc)),
 			NumEnums:      2,
 			NumMessages:   8,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
-		GoTypes:           file_did_proto_goTypes,
-		DependencyIndexes: file_did_proto_depIdxs,
-		EnumInfos:         file_did_proto_enumTypes,
-		MessageInfos:      file_did_proto_msgTypes,
+		GoTypes:           file_qlink_did_v1_did_proto_goTypes,
+		DependencyIndexes: file_qlink_did_v1_did_proto_depIdxs,
+		EnumInfos:         file_qlink_did_v1_did_proto_enumTypes,
+		MessageInfos:      file_qlink_did_v1_did_proto_msgTypes,
 	}.Build()
-	File_did_proto = out.File
-	file_did_proto_goTypes = nil
-	file_did_proto_depIdxs = nil
+	File_qlink_did_v1_did_proto = out.File
+	file_qlink_did_v1_did_proto_goTypes = nil
+	file_qlink_did_v1_did_proto_depIdxs = nil
 }

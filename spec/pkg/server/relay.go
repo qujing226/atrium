@@ -6,7 +6,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/qujing226/QLink/spec/gen"
+	didv1 "github.com/qujing226/QLink/spec/gen/qlink/did/v1"
 	"github.com/qujing226/QLink/spec/pkg/connect"
 )
 
@@ -120,7 +120,7 @@ func (s *RelayServer) handleConn(conn net.Conn) {
 		} else {
 			// 目标不在线，返回错误状态
 			// fmt.Printf("[Relay] Target not found: %s\n", to)
-			s.sendError(conn, pkt.Header.RequestId, didproto.Status_ERROR_GENERIC, "Target DID not connected")
+			s.sendError(conn, pkt.Header.RequestId, didv1.Status_CODE_ERROR_PROTOCOL_VIOLATION, "Target DID not connected")
 		}
 	}
 }
@@ -145,14 +145,14 @@ func (s *RelayServer) getClient(did string) net.Conn {
 	return s.clients[did]
 }
 
-func (s *RelayServer) sendError(conn net.Conn, replyToID string, code didproto.Status_Code, msg string) {
-	statusPkt := &didproto.Packet{
-		Header: &didproto.Header{
+func (s *RelayServer) sendError(conn net.Conn, replyToID string, code didv1.Status_Code, msg string) {
+	statusPkt := &didv1.Packet{
+		Header: &didv1.Header{
 			Timestamp: time.Now().UnixMilli(),
 			FromDid:   "did:qlink:relay", // Relay 自己的 ID
 		},
-		Payload: &didproto.Packet_Status{
-			Status: &didproto.Status{
+		Payload: &didv1.Packet_Status{
+			Status: &didv1.Status{
 				ReplyToId: replyToID,
 				Code:      code,
 				Message:   msg,
