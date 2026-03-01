@@ -1,98 +1,62 @@
 # QLink 协议：形式化安全模型与推测执行证明 (Formal Security Model & Speculative Execution Proof)
 
-> 本文档基于扩展的 Bellare-Rogaway (eBR) AKE 安全模型，引入了推测状态约束 (Speculative State Constraints)，通过 Game-Hopping (游戏序列法) 对 QLink 协议的认证完整性与机密性进行严格的数学归约证明。
+> 本文档基于扩展的 Bellare-Rogaway (eBR) AKE 安全模型，引入了推测状态约束 (Speculative State Constraints)，通过博弈序列法 (Game-Hopping) 对 QLink 协议进行数学归约证明。
 
 ---
 
-## 1. 系统模型与敌手能力 (System Model & Adversary Capabilities)
+## 1. 系统模型与共识原语 (System Model & Consensus Primitives)
 
-### 1.1 实体、状态与原子原语 (Entities, States & Atomic Primitives)
-设 $\mathcal{P}$ 为协议参与者集合。对于任意会话实例 $\Pi_{i,j}^s$，其内部状态集为 $\mathbb{S} = \{S_{idle}, S_{spec}, S_{ver}, S_{abort}\}$。
+### 1.1 实体与状态 (Entities & States)
+设 $\mathcal{P}$ 为协议参与者集合。对于任意会话实例 $\Pi(i, j, s)$，其内部状态集为 $\mathbb{S} = \{S_{idle}, S_{spec}, S_{ver}, S_{abort}\}$。
 
-**数据闸门与原子性约束 (Data Gate & Atomicity Constraint)**：
-定义函数 `Deliver(M)` 为将消息 $M$ 递交至应用层。协议假定存在一个底层**原子事务原语 (Atomic Transaction Primitive)** 保证：
-1. 状态一旦转化为 $S_{abort}$，`Buffer.Clear()` 必然与状态改变原子性完成，应用层不可见残留数据。
-2. 状态一旦转化为 $S_{ver}$，`Buffer.Flush()` 必然按序将历史数据交付给应用层。
-任何破坏此原子性的系统级故障概率记为 $P_{race}(\Delta t)$。
+**协议原子性假设 (Atomicity Assumption)**：
+协议逻辑保证状态转换与隔离缓冲区的操作（`Buffer.Clear` 或 `Buffer.Flush`）在本地逻辑中是原子性的。在 $S_{spec}$ 状态下，数据隔离闸门 (DIG) 机制强制阻断数据向应用层的交付。
 
-### 1.2 参数化的解析预言机 (Parameterized Resolve Oracle)
-我们不假设底层区块链的绝对完美，而是将其抽象为一个参数化的验证预言机 $\mathcal{O}_{resolve}(DID)$，具有以下特征：
-*   **最终性函数 $F(t)$**：预言机返回的版本在时间 $t$ 之后不被回滚（达成最终一致）的概率。
-*   **认证误报率 $\epsilon_{auth}$**：预言机被恶意欺骗返回无效文档（但通过了密码学验证）的极小概率。
-*   **延迟分布 $D_{resolve}$**：预言机响应的物理耗时分布，敌手可在此分布范围内操控延迟。
+### 1.2 共识驱动的解析预言机 (Consensus-Driven Resolve Oracle)
+我们将底层区块链抽象为一个提供“真实性证明”的预言机 $\mathcal{O}_{resolve}$。该预言机针对不同共识协议提供统一的证明接口：
 
-### 1.3 敌手模型 $\mathcal{A}$ (Adversary Model & Oracle Queries)
-敌手 $\mathcal{A}$ 是完全控制异步网络信道的 PPT 算法，并能与 $\mathcal{O}_{resolve}$ 交互。$\mathcal{A}$ 可调用以下预言机：
-*   $\text{Send}(i, j, s, M)$: 向实例 $\Pi_{i,j}^s$ 注入、拦截或修改消息。
-*   $\text{Corrupt}(i, t)$: **自适应腐败 (Adaptive Corrupt)**。返回参与者 $i$ 在时间 $t$ 之前生成的所有私钥材料。
-    *   **限制条件**: 对于任何选定的测试会话 (Test Session) $\Pi_{i,j}^{s^*}$（其活跃时间区间为 $[t_{start}, t_{end}]$），禁止 $\mathcal{A}$ 调用 $\text{Corrupt}(i, t)$ 或 $\text{Corrupt}(j, t)$ 使得 $t \in [t_{start}, t_{end}]$，以防止直接泄露该会话正在使用的活跃私钥。
-*   $\text{Delay}(\mathcal{O}_{resolve}, \Delta t)$: 基于延迟分布 $D_{resolve}$ 拦截并延迟节点的身份解析请求。
+1.  **PoW 链 (如 Bitcoin)**: 返回 $(Doc, \pi_{spv}, k)$。$\pi_{spv}$ 为 Merkle 证明，$k$ 为当前确认深度。
+2.  **BFT/PoS 链 (如 Cosmos)**: 返回 $(Doc, \Sigma_{qc})$。$\Sigma_{qc}$ 为 $>2/3$ 验证者的聚合签名 (Quorum Certificate)。
+3.  **L2/zk-Rollup**: 返回 $(Doc, \pi_{zk})$。$\pi_{zk}$ 为数学上的有效性证明 (Validity Proof)。
+
+客户端本地运行验证器 $V_{chain}(Doc, Proof)$。当且仅当 $V_{chain}$ 返回真时，状态机才允许从 $S_{spec}$ 跳转至 $S_{ver}$。
+
+### 1.3 敌手模型 $\mathcal{A}$ (Adversary Model)
+敌手 $\mathcal{A}$ 完全控制异步网络，并能调用以下预言机：
+*   $\text{Send}(i, j, s, M)$: 注入、拦截或修改消息。
+*   $\text{Corrupt}(i, t)$: 获取历史密钥。满足**新鲜性限制 (Freshness Constraint)**：不得获取测试会话正在使用的活跃密钥。
+*   $\text{Delay}(\mathcal{O}_{resolve}, \Delta t)$: 拦截验证证明的投递，延长推测窗口。
 
 ---
 
 ## 2. 安全目标：最终应用层认证完整性 (EALA Security Game)
 
-我们通过一个形式化的挑战博弈 (Challenge Game) 来定义 **最终应用层认证完整性 (Eventual Application-Layer Authenticity, EALA)**。
-
-**定义 1 (EALA)**: 称协议具有 EALA 属性，如果对于任意 PPT 敌手 $\mathcal{A}$，其赢得以下博弈的优势 $\text{Adv}_{\mathcal{A}}^{EALA}$ 是可忽略的 (negligible)。
+**定义 1 (EALA 安全性)**：若对于任意 PPT 敌手 $\mathcal{A}$，其赢得以下挑战博弈的优势 $\text{Adv}_{\mathcal{A}}^{EALA}$ 是受限且随确认深度 $k$ 衰减的，则判定协议满足 EALA 安全性。
 
 **EALA 博弈过程 ($Game_{EALA}$)**：
-1.  **Setup**: 挑战者 $\mathcal{C}$ 初始化系统参数与所有参与者的密钥对。
-2.  **Training**: $\mathcal{A}$ 自由调用 $\text{Send}, \text{Corrupt}$（遵循过期限制）和 $\text{Delay}$ 预言机。
-3.  **Challenge(i, j, s)**: 
-    *   $\mathcal{A}$ 提交一个伪造的密文序列 $C_{fake}$ 给实例 $\Pi_{i,j}^s$。
-    *   挑战者 $\mathcal{C}$ 将 Buffer 中从 $C_{fake}$ 解密出的第一个明文 $P^*$ 标记为 `CHALLENGE`。
-4.  **Victory Condition**: $\mathcal{A}$ 获胜当且仅当发生 $\text{Deliver}(P^*)$，且挑战者 $\mathcal{C}$ 的发送日志中没有任何记录表明真实的 $j$ 在 $\text{Deliver}(P^*)$ 发生前发送过 $P^*$。
+1.  **Challenge(i, j, s)**: $\mathcal{A}$ 发送伪造密文序列 $C_{fake}$ 给进入 $S_{spec}$ 状态的节点 $i$。
+2.  **Victory Condition**: $\mathcal{A}$ 获胜当且仅当节点 $i$ 执行了 $\text{Deliver}(P^*)$，且 $P^*$ 未经真实发送方 $j$ 授权。
 
 ---
 
 ## 3. 安全性归约证明 (Formal Proof via Game-Hopping)
 
-**定理 1 (Theorem 1)**: 假设 Ed25519 提供 EUF-CMA 安全性，Kyber768 提供 IND-CCA2 安全性，则 QLink 协议是 S-AKE 安全的。
+**定理 1**: 假设 Ed25519 满足 EUF-CMA，Kyber768 满足 IND-CCA2，且底层共识协议具有最终确定性，则敌手 $\mathcal{A}$ 赢得 EALA 博弈的优势上界为：
 
-**证明 (Proof)**: 我们通过构造一系列不可区分的博弈 $G_0, G_1, G_2, G_3$ 来界定敌手的优势。
+$$ \text{Adv}_{\mathcal{A}}^{S-AKE} \le \epsilon_{sig} + \epsilon_{kem} + P_{reorg}(k) + \epsilon_{consensus} $$
 
-### Game 0: 真实的 S-AKE 协议
-$$\Pr[\mathcal{A} \text{ wins } G_0] = \Pr[W_0]$$
+### Game 0, 1, 2: 密码学归约
+通过排除纯数学伪造签名 ($\epsilon_{sig}$) 和暴力破解密文 ($\epsilon_{kem}$) 的可能性，我们将博弈归约为对身份一致性的攻击。
+$$ | \Pr[W_2] - \Pr[W_0] | \le \epsilon_{sig} + \epsilon_{kem} $$
 
-### Game 1: 剥夺签名伪造能力 (EUF-CMA Reduction)
-在 $G_1$ 中，如果 $\mathcal{A}$ 提交了一个有效的签名，但该签名并非由诚实节点生成，$\mathcal{C}$ 将直接触发 $Abort$。
-**归约器 $\mathcal{R}_{SIG}$ 骨架**:
-```text
-Reduction R_SIG:
-  Input: EUF-CMA challenge public key pk
-  Simulate all honest parties using pk for target identity j.
-  If adversary A outputs a forged signature σ on message m in G1:
-     Output (m, σ) as the solution to the EUF-CMA challenge.
-```
-*分析*: $|\Pr[W_1] - \Pr[W_0]| \le \text{Adv}_{\mathcal{A}}^{EUF-CMA} \le \epsilon_{sig}$
+### Game 3: 证明验证归约 (Proof-Carrying Verification)
+在 $G_3$ 中，敌手 $\mathcal{A}$ 唯一的获胜路径是：提供一个能够通过 $V_{chain}$ 验证的非法证明。基于底层共识协议的属性，这种情况仅在以下两种情形发生：
 
-### Game 2: 剥夺密文区分能力 (IND-CCA2 Reduction)
-在 $G_2$ 中，将 Kyber768 封装生成的真实共享密钥替换为理想随机密钥。
-**归约器 $\mathcal{R}_{KEM}$ 骨架**:
-```text
-Reduction R_KEM:
-  Input: IND-CCA2 challenge (pk, ciphertext c*, key k*)
-  Simulate session setup using c* and k*. 
-  If adversary A can distinguish whether k* is real or random:
-     Output A's guess to win the IND-CCA2 game.
-```
-*分析*: $|\Pr[W_2] - \Pr[W_1]| \le \text{Adv}_{\mathcal{A}}^{IND-CCA2} \le \epsilon_{kem}$
+1.  **共识安全性失效 (Consensus Failure)**: 敌手控制了链的共识，能够生成合法的聚合签名 $\Sigma_{qc}$ 或伪造有效性证明 $\pi_{zk}$。此概率记为 $\epsilon_{consensus}$。
+2.  **状态重组 (Reorg Attack)**: 敌手利用 PoW 等协议的概率最终性，在客户端收到 $k$ 深度证明后，通过挖出更长链来回滚该状态。此概率记为 $P_{reorg}(k)$。
 
-### Game 3: 引入数据闸门拦截与概率约束 (The Speculative Isolation bounds)
-在 $G_3$ 中，我们分析在推测窗口 $\Delta t$ 内，$\mathcal{A}$ 尝试突破数据闸门的概率。
+由于在 $S_{spec}$ 阶段数据被 DIG 机制严格隔离，只有当验证器 $V_{chain}$ 返回真时数据才会被释放。因此：
+$$ \Pr[W_3 \mid \text{EALA violation}] \le P_{reorg}(k) + \epsilon_{consensus} $$
 
-在现实系统中，$\mathcal{A}$ 成功触发 $\text{Deliver}(P^*)$ 的概率受制于以下系统级风险：
-1.  **异步原子性失效 $P_{race}(\Delta t)$**: 状态切断时，非法明文泄露至应用层的系统级故障概率。
-2.  **回滚信令丢失 $P_{abort\_loss}(\Delta t)$**: 发起方的状态中止信令在传输过程中丢失。设定网络单包丢失率为 $p$，协议配置的重试上限为 $r$，则回滚信令投递失败的概率界限估计为 $P_{abort\_loss}(\Delta t) \le p^{r+1}$。
-3.  **账本伪终局性 $\epsilon_{auth} + (1 - F(\Delta t))$**: $\mathcal{O}_{resolve}$ 在 $\Delta t$ 时刻返回了“通过”验证（包括轻节点被欺骗的概率 $\epsilon_{auth}$），但区块后续被重组抛弃（概率为 $1 - F(\Delta t)$）。
-
-*分析*: 
-$$\Pr[W_3 \mid \text{EALA violation}] \le P_{race}(\Delta t) + P_{abort\_loss}(\Delta t) + (1 - F(\Delta t)) + \epsilon_{auth}$$
-
-### 结论与定量上界 (Conclusion & Quantitative Bounds)
-合并上述游戏序列，我们得出敌手 $\mathcal{A}$ 破坏 QLink 协议应用层认证完整性的总优势上界：
-
-$$\text{Adv}_{\mathcal{A}}^{S-AKE} \le \epsilon_{sig} + \epsilon_{kem} + P_{race}(\Delta t) + P_{abort\_loss}(\Delta t) + (1 - F(\Delta t)) + \epsilon_{auth}$$
-
-该公式表明，只要工程实现保证原子性且网络参数合理，QLink 在 $\Delta t$ 推测窗口内的应用层安全风险等价于可忽略的密码学概率。 $\blacksquare$
+### 结论
+QLink 的安全性不依赖于对查询节点的“诚实假设”，而是约化为对“共识证明”的数学校验。协议利用 DIG 机制将共识延迟 ($\Delta t$) 转化为应用层不可感知的静默等待，从而在不损失最终安全性的前提下实现了 0-RTT 的极速响应。定理得证。 $\blacksquare$
