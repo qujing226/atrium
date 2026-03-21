@@ -50,11 +50,11 @@ $$ P(\Delta t) = \Pr[ \text{攻击者在 } \Delta t \text{ 时间内利用过期
 
 ### 2.2 基于概率熵衰减的自适应轮换模型 (Adaptive Ratchet Rotation via Entropy Decay)
 
-纯哈希棘轮虽具有前向安全性，但在状态被提取（State Compromise）后无法实现后向安全自愈。为此，我们引入一种可量化的**熵衰减模型 (Entropy Decay Model)** 来驱动 Epoch-KEM 的自适应注入。
+纯哈希棘轮虽具有前向安全性，但在状态被提取 (State Compromise) 后无法实现后向安全自愈。为此，我们引入一种可量化的**熵衰减模型 (Entropy Decay Model)** 来驱动 Epoch-KEM 的自适应注入。
 
 **定量风险模型 (Mathematical Risk Model)**：
 假设协议状态由于内存扫描或侧信道攻击导致的泄露服从泊松分布。设当前距离上一次 KEM 注入已过去时间 $\Delta t_{kem}$，且在此期间系统处理了 $n$ 条加密消息。
-我们定义**时间驱动的泄露系数 $\lambda_t$** 与 **事件驱动（侧信道）的泄露系数 $\lambda_n$**。系统状态被未知敌手提取的累积风险函数定义为：
+我们定义**时间驱动的泄露系数** $\lambda_t$ 与 **事件驱动（侧信道）的泄露系数** $\lambda_n$。系统状态被未知敌手提取的累积风险函数定义为：
 $$ Risk(\Delta t_{kem}, n) = 1 - \exp(-(\lambda_t \cdot \Delta t_{kem} + \lambda_n \cdot n)) $$
 
 **线性安全预算与自适应触发 (Linear Security Budget & Trigger)**：

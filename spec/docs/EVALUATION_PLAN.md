@@ -20,7 +20,7 @@
 ## 5.2 Environmental Setup (实验环境)
 
 所有实验均在跨大洲的云基础设施上运行，以重现真实的广域网物理延迟与抖动：
-*   **客户端节点 (Initiator/Responder)**：部署于亚洲 (Beijing) 与欧洲 (Frankfurt)，基础往返时延 $\text{RTT}_{base} \approx 150ms$。
+*   **客户端节点 (Initiator/Responder)**：部署于亚洲 (Beijing) 与欧洲 (Frankfurt)，基础往返时延 $RTT_{base} \approx 150ms$。
 *   **中继与预言机节点**：部署于北美 (Virginia)。区块链共识延迟 $T_{chain}$ 通过参数化可调范围 $100ms \sim 15s$ 模拟。
 
 ## 5.3 RQ1: Eliminating the Latency Cliff (消除延迟断崖)
@@ -28,7 +28,7 @@
 我们测量了在不同 $T_{chain}$ 延迟下，建立安全通信所需的首字节时间 (TTFB)。
 
 *(此处将插入图表：TTFB vs Blockchain Latency)*
-**观测结果**：随着 $T_{chain}$ 增加，Strict Sync (B2a) 展现出不可接受的线性性能退化 (Latency Cliff)。而 QLink 的 TTFB 始终与 TLS 1.3 (B1) 的物理极限制持平，维持在 $O(\text{RTT}_{base})$ 水平，完美屏蔽了底层的共识耗时。
+**观测结果**：随着 $T_{chain}$ 增加，Strict Sync (B2a) 展现出不可接受的线性性能退化 (Latency Cliff)。而 QLink 的 TTFB 始终与 TLS 1.3 (B1) 的物理极限制持平，维持在 $O(RTT_{base})$ 水平，完美屏蔽了底层的共识耗时。
 
 ## 5.4 RQ2: Resilience to Key Rotation Shocks (抗密钥轮换冲击)
 
@@ -45,7 +45,7 @@
 我们在网络中注入 $5\%$ 的恶意过期公钥攻击。
 *   **Async Cache (B2b)**: 为了追求 0-RTT 放弃了数据隔离，导致 $5\%$ 的非法明文被错误交付给应用层，发生了灾难性的安全事故。
 *   **QLink (S-AKE)**: 成功拦截了所有 $5\%$ 的非法流量。
-*   **开销 (Overhead)**: 测量表明，维持 DIG 隔离缓冲区在发送 $1\text{MB}$ 和 $10\text{MB}$ 突发数据时，内存峰值分别仅增加 $1.2\text{MB}$ 和 $10.5\text{MB}$，在现代设备上微不足道。
+*   **开销 (Overhead)**: 测量表明，维持 DIG 隔离缓冲区在发送 $1MB$ 和 $10MB$ 突发数据时，内存峰值分别仅增加 $1.2MB$ 和 $10.5MB$，在现代设备上微道。
 
 ## 5.6 Limitations (局限性声明)
 
