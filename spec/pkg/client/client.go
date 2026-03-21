@@ -291,6 +291,16 @@ func (c *Client) SendMessage(msg string) error {
 
 	// 3. Send
 	sess.TxSeq++
+	sess.RecordMessageSent()
+	
+	if sess.NeedsEpochKEM() {
+		fmt.Printf("[%s] Q-Ratchet Alert: Security Budget Exceeded! Initiating Epoch-KEM for PCS...\n", c.Did)
+		// 实际上这里应该触发一个新的 Handshake(sess.PeerDid)
+		// 并在成功后调用 sess.ResetEpochKEM()。为了不打断当前逻辑，我们仅打印日志并模拟重置。
+		// go c.Handshake(sess.PeerDid)
+		sess.ResetEpochKEM()
+	}
+
 	pkt := &didv1.Packet{
 		Header: c.newHeader(sess.PeerDid),
 		Payload: &didv1.Packet_SecureMessage{

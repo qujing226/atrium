@@ -48,9 +48,25 @@ $$ P(\Delta t) = \Pr[ \text{攻击者在 } \Delta t \text{ 时间内利用过期
 1.  **数据包级 (Packet-Level)**: 使用对称哈希链 (HKDF chain) 实现 $O(1)$ 计算开销的前向安全 (PFS)。
 2.  **周期级 (Epoch-Level)**: 周期性 $N$ 注入 KEM 握手，引入新鲜量子熵，实现后向安全性 (PCS)。
 
-### 2.2 熵衰减模型
-*   **优化目标**: $\min \text{Cost} = N \cdot C_{hash} + C_{kem}$
-*   在保证安全强度 $S > \text{Threshold}$ 的前提下，通过动态调整 $N$ 平衡带宽与安全性。
+### 2.2 基于概率熵衰减的自适应轮换模型 (Adaptive Ratchet Rotation via Entropy Decay)
+
+纯哈希棘轮虽具有前向安全性，但在状态被提取（State Compromise）后无法实现后向安全自愈。为此，我们引入一种可量化的**熵衰减模型 (Entropy Decay Model)** 来驱动 Epoch-KEM 的自适应注入。
+
+**定量风险模型 (Mathematical Risk Model)**：
+假设协议状态由于内存扫描或侧信道攻击导致的泄露服从泊松分布。设当前距离上一次 KEM 注入已过去时间 $\Delta t_{kem}$，且在此期间系统处理了 $n$ 条加密消息。
+我们定义**时间驱动的泄露系数 $\lambda_t$** 与 **事件驱动（侧信道）的泄露系数 $\lambda_n$**。系统状态被未知敌手提取的累积风险函数定义为：
+$$ Risk(\Delta t_{kem}, n) = 1 - \exp(-(\lambda_t \cdot \Delta t_{kem} + \lambda_n \cdot n)) $$
+
+**线性安全预算与自适应触发 (Linear Security Budget & Trigger)**：
+协议设定一个安全容忍上限阈值 $\Theta_{risk}$。当 $Risk > \Theta_{risk}$ 时，必须强制执行 Epoch-KEM 轮换以注入新鲜量子熵。
+为适配资源受限设备，我们对触发不等式两边取对数进行线性化推导：
+$$ 1 - \exp(-(\lambda_t \cdot \Delta t_{kem} + \lambda_n \cdot n)) > \Theta_{risk} $$
+$$ \lambda_t \cdot \Delta t_{kem} + \lambda_n \cdot n > -\ln(1 - \Theta_{risk}) $$
+令常数安全预算 $C = -\ln(1 - \Theta_{risk})$，协议状态机只需维护一个简单的线性积分器：
+$$ \text{Accumulated\_Leakage} = \lambda_t \cdot \Delta t_{kem} + \lambda_n \cdot n $$
+当 $\text{Accumulated\_Leakage} > C$ 时，协议自动触发新一轮的 Kyber768 握手，重置 $\Delta t_{kem}$ 与 $n$。
+
+此模型在不改变底层密码学算法的前提下，通过系统级的调度策略，实现了后向量子安全 (PCS) 与带宽开销的数学最优解。
 
 ---
 

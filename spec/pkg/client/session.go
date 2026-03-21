@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"sync"
+	"time"
 
 	didv1 "github.com/qujing226/QLink/spec/gen/qlink/did/v1"
 	"github.com/qujing226/QLink/spec/pkg/secure"
@@ -11,6 +12,14 @@ import (
 
 // MaxPendingMessages defines the High-Water Mark for the isolation buffer.
 const MaxPendingMessages = 100
+
+// Q-Ratchet Adaptive Security Budget Constants
+// These represent the linear coefficients for the Entropy Decay Model.
+const (
+	SecurityBudget = 100.0 // The constant C = -ln(1 - Theta_risk)
+	LeakPerSecond  = 0.5   // lambda_t: Risk exposure per second of in-memory key lifetime
+	LeakPerMessage = 1.0   // lambda_n: Risk exposure per message encrypted (side-channel/crypto-analysis risk)
+)
 
 // Session encapsulates the security state and cryptographic keys for a peer connection.
 // It implements the "Data Gate" logic defined in the protocol specification.
@@ -22,6 +31,10 @@ type Session struct {
 	TxRatchet *secure.ChainKey // My outgoing chain
 	RxRatchet *secure.ChainKey // Incoming chain from peer
 	TxSeq     uint64           // My outgoing sequence number
+
+	// Adaptive Epoch-KEM Tracking
+	lastKemTime time.Time
+	msgCount    int
 
 	// Isolation Buffer (The Data Gate)
 	// Stores decrypted plaintexts that MUST NOT be delivered to the app layer yet.
@@ -37,8 +50,37 @@ func NewSession(peerDid string, initialState didv1.SessionState, txKey, rxKey *s
 		State:       initialState,
 		TxRatchet:   txKey,
 		RxRatchet:   rxKey,
+		lastKemTime: time.Now(),
+		msgCount:    0,
 		PendingMsgs: make([][]byte, 0, 10),
 	}
+}
+
+// RecordMessageSent increments the message counter for the entropy decay model.
+func (s *Session) RecordMessageSent() {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.msgCount++
+}
+
+// ResetEpochKEM is called after a successful new KEM exchange to inject fresh entropy.
+func (s *Session) ResetEpochKEM() {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.lastKemTime = time.Now()
+	s.msgCount = 0
+}
+
+// NeedsEpochKEM evaluates the Accumulated Leakage against the Security Budget.
+// If true, the client MUST initiate a new KEM handshake to achieve Post-Compromise Security.
+func (s *Session) NeedsEpochKEM() bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	deltaT := time.Since(s.lastKemTime).Seconds()
+	currentRisk := (LeakPerSecond * deltaT) + (LeakPerMessage * float64(s.msgCount))
+	
+	return currentRisk >= SecurityBudget
 }
 
 // ProcessIncomingMsg handles the state-dependent logic for received messages.
