@@ -1,11 +1,13 @@
-package main
+package tests
 
 import (
 	"fmt"
+	"testing"
+
 	"github.com/nuts-foundation/go-did/did"
 )
 
-func main() {
+func TestParseDidDocument(t *testing.T) {
 	rawJSON := `{
 		"@context": ["https://www.w3.org/ns/did/v1"],
 		"id": "did:example:123",
@@ -30,8 +32,8 @@ func main() {
 		fmt.Println("Error:", err)
 		return
 	}
-	fmt.Println("Parsed:", len(doc.VerificationMethod), "verification methods")
+	t.Log("Parsed:", len(doc.VerificationMethod), "verification methods")
 	for _, vm := range doc.VerificationMethod {
-		fmt.Printf("Type: %s\n", vm.Type)
+		t.Logf("Type: %s\n", vm.Type)
 	}
 }

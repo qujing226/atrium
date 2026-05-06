@@ -27,7 +27,7 @@ require (
 	github.com/nuts-foundation/go-did v0.19.0
 	github.com/segmentio/asm v1.2.1 // indirect
 	github.com/shengdoushi/base58 v1.0.0 // indirect
-	golang.org/x/crypto v0.48.0 // indirect
+	golang.org/x/crypto v0.48.0
 )
 
 require (

@@ -196,7 +196,7 @@ func (c *Client) Handshake(targetDid string) error {
 		return err
 	}
 
-	targetKyberPk, err := secure.LoadFromBytes(targetKyberBytes, nil) // Skip Ed25519
+	targetKyberPk, err := secure.LoadFromBytes(targetKyberBytes, nil)
 	if err != nil {
 		return err
 	}

@@ -10,7 +10,7 @@ import (
 )
 
 const (
-	Ed25519KeyType  ssi.KeyType = "Ed25519VerificationKey2020"
+	Dilithium3KeyType  ssi.KeyType = "Dilithium3PublicKey"
 	Kyber768KeyType ssi.KeyType = "Kyber768PublicKey"
 )
 
@@ -31,12 +31,12 @@ func BuildDIDDocument(didID string, signPk []byte, kyberPk []byte) ([]byte, erro
 		ID:      *parsedDID,
 	}
 
-	// Add Ed25519 Verification Method
+	// Add Dilithium3 Verification Method
 	signMb, _ := multibase.Encode(multibase.Base58BTC, signPk)
 	signURL := did.MustParseDIDURL(didID + "#sign-1")
 	signVM := &did.VerificationMethod{
 		ID:                 signURL,
-		Type:               Ed25519KeyType,
+		Type:               Dilithium3KeyType,
 		Controller:         *parsedDID,
 		PublicKeyMultibase: signMb,
 	}
@@ -81,7 +81,7 @@ func (w *DIDDocumentWrapper) GetKyberPubKey() ([]byte, error) {
 // GetSigningPubKey extracts the Ed25519 public key bytes from the DID Document.
 func (w *DIDDocumentWrapper) GetSigningPubKey() ([]byte, error) {
 	for _, vm := range w.VerificationMethod {
-		if vm.Type == Ed25519KeyType && vm.PublicKeyMultibase != "" {
+		if vm.Type == Dilithium3KeyType && vm.PublicKeyMultibase != "" {
 			_, decoded, err := multibase.Decode(vm.PublicKeyMultibase)
 			return decoded, err
 		}

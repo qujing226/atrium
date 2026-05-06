@@ -2,7 +2,7 @@ package secure
 
 import (
 	"crypto/hmac"
-	"crypto/sha256"
+	"golang.org/x/crypto/sha3"
 	"errors"
 	"hash"
 )
@@ -39,13 +39,13 @@ func (c *ChainKey) Ratchet() (messageKey []byte, err error) {
 
 	// 1. 派生 Message Key (用于加密数据)
 	// MK = HMAC-SHA256(CK, 0x01)
-	mkMac := hmac.New(sha256.New, c.key)
+	mkMac := hmac.New(sha3.New384, c.key)
 	mkMac.Write(inputMsgKey)
 	messageKey = mkMac.Sum(nil)
 
 	// 2. 派生 Next Chain Key (用于下一次棘轮)
 	// CK_next = HMAC-SHA256(CK, 0x02)
-	ckMac := hmac.New(sha256.New, c.key)
+	ckMac := hmac.New(sha3.New384, c.key)
 	ckMac.Write(inputNextKey)
 	nextChainKey := ckMac.Sum(nil)
 
@@ -66,7 +66,7 @@ func (c *ChainKey) CurrentState() []byte {
 // SimpleKDF 是一个通用的密钥派生函数，用于将 Kyber 的随机种子扩展为初始 ChainKey
 // 使用 HKDF-like 结构: HMAC(salt, info)
 func SimpleKDF(secret, salt, info []byte) []byte {
-	h := func() hash.Hash { return sha256.New() }
+	h := func() hash.Hash { return sha3.New384() }
 	
 	// Extract (if salt is provided)
 	prk := secret
