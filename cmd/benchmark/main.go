@@ -39,8 +39,8 @@ func runExperiment(chainLatency time.Duration, isStaleCache bool) {
 		}
 	})
 
-	aliceClient, _ = client.NewClient("did:qlink:alice", aliceCache, RelayAddr)
-	bobClient, _ = client.NewClient("did:qlink:bob", bobCache, RelayAddr)
+	aliceClient, _ = client.NewClient("did:atrium:alice", aliceCache, RelayAddr)
+	bobClient, _ = client.NewClient("did:atrium:bob", bobCache, RelayAddr)
 
 	var wg sync.WaitGroup
 	deliveredMessages := 0
@@ -56,16 +56,16 @@ func runExperiment(chainLatency time.Duration, isStaleCache bool) {
 	time.Sleep(200 * time.Millisecond)
 
 	// Populate caches
-	aliceClient.Handshake("did:qlink:bob")
+	aliceClient.Handshake("did:atrium:bob")
 	time.Sleep(chainLatency + 200*time.Millisecond)
 
 	if isStaleCache {
-		oracle.UpdateDID("did:qlink:bob")
+		oracle.UpdateDID("did:atrium:bob")
 	}
 
 	// 2. Measure TTFB (Time to First Byte)
 	start := time.Now()
-	err := aliceClient.Handshake("did:qlink:bob")
+	err := aliceClient.Handshake("did:atrium:bob")
 	if err != nil {
 		fmt.Printf("Handshake failed: %v\n", err)
 		return

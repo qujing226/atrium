@@ -7,7 +7,7 @@ import "atrium/v1/core.proto";
 import "atrium/v1/app.proto";
 
 /* =========================================================================
- * QLink AKE Envelope
+ * Atrium AKE Envelope
  * ========================================================================= */
 
 message Packet {

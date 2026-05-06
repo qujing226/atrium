@@ -16,7 +16,7 @@ const (
 )
 
 func main() {
-	fmt.Println("=== QLink Protocol Simulation: The Attack Scenario ===")
+	fmt.Println("=== Atrium Protocol Simulation: The Attack Scenario ===")
 
 	// 1. Start Relay
 	relay := server.NewRelayServer()
@@ -53,7 +53,7 @@ func main() {
 
 	// 3. Init Clients
 	var err error
-	bobClient, err = client.NewClient("did:qlink:bob", bobCache, RelayAddr)
+	bobClient, err = client.NewClient("did:atrium:bob", bobCache, RelayAddr)
 	if err != nil {
 		panic(err)
 	}
@@ -62,7 +62,7 @@ func main() {
 	}
 	bobClient.Start()
 
-	aliceClient, err = client.NewClient("did:qlink:alice", aliceCache, RelayAddr)
+	aliceClient, err = client.NewClient("did:atrium:alice", aliceCache, RelayAddr)
 	if err != nil {
 		panic(err)
 	}
@@ -77,7 +77,7 @@ func main() {
 	// Phase 1: Warm-up (Establish valid cache)
 	// =========================================================================
 	fmt.Println("\n--- Phase 1: Warm-up (Populating Cache) ---")
-	if err := aliceClient.Handshake("did:qlink:bob"); err != nil {
+	if err := aliceClient.Handshake("did:atrium:bob"); err != nil {
 		panic(err)
 	}
 	// Wait for background verification to complete and cache to be marked valid
@@ -91,7 +91,7 @@ func main() {
 	fmt.Println(">>> Simulating Bob's key compromise/rotation on chain...")
 	// Attack: Bob's key changes on chain!
 	// Alice doesn't know yet. Her cache has the OLD key.
-	if err := oracle.UpdateDID("did:qlink:bob"); err != nil {
+	if err := oracle.UpdateDID("did:atrium:bob"); err != nil {
 		panic(err)
 	}
 
@@ -101,7 +101,7 @@ func main() {
 	fmt.Println("\n--- Phase 3: Speculative Handshake (Using Stale Cache) ---")
 	// Alice initiates handshake using STALE cache (Fast Path)
 	start := time.Now()
-	if err := aliceClient.Handshake("did:qlink:bob"); err != nil {
+	if err := aliceClient.Handshake("did:atrium:bob"); err != nil {
 		fmt.Printf("Handshake failed immediately: %v\n", err)
 	} else {
 		fmt.Printf(">>> Handshake 2 (Speculative) Finished in %v\n", time.Since(start))

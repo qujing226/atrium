@@ -12,7 +12,7 @@ import (
 )
 
 var (
-	msg = []byte("QLink: Decentralized Post-Quantum Authenticated Key Exchange Protocol for WAN Environments")
+	msg = []byte("Atrium: Decentralized Post-Quantum Authenticated Key Exchange Protocol for WAN Environments")
 )
 
 // =====================================================================

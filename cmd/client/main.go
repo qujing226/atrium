@@ -22,8 +22,8 @@ func main() {
 	benchmark := flag.Int("benchmark", 0, "Number of automated handshakes to run for data collection")
 	flag.Parse()
 
-	myDid := "did:qlink:" + *name
-	peerDid := "did:qlink:" + *peer
+	myDid := "did:atrium:" + *name
+	peerDid := "did:atrium:" + *peer
 
 	remoteOracle := blockchain.NewRemoteOracle(*oracleUrl)
 	var c *client.Client

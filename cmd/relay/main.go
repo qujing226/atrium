@@ -10,7 +10,7 @@ func main() {
 	port := flag.String("port", "9000", "Port to listen on")
 	flag.Parse()
 
-	fmt.Println("=== QLink Relay Server ===")
+	fmt.Println("=== Atrium Relay Server ===")
 
 	relay := server.NewRelayServer()
 	if err := relay.Start(*port); err != nil {

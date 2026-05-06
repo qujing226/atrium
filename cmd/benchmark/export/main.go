@@ -18,7 +18,7 @@ func main() {
 	writer := csv.NewWriter(file)
 	defer writer.Flush()
 
-	writer.Write([]string{"ChainLatency_ms", "Traditional_TTFB_ms", "QLink_S-AKE_TTFB_ms"})
+	writer.Write([]string{"ChainLatency_ms", "Traditional_TTFB_ms", "Atrium_S-AKE_TTFB_ms"})
 
 	// 模拟参数
 	baseRTT := 150.0 // 假设跨国网络基础往返时延为 150ms
@@ -34,7 +34,7 @@ func main() {
 		// 耗时 = 基础 RTT + 链延迟 + 计算开销 + 随机抖动
 		t_ttfb := baseRTT + tChain + cryptoOverhead + jitter
 
-		// QLink S-AKE：推测执行，直接掩盖链延迟
+		// Atrium S-AKE：推测执行，直接掩盖链延迟
 		// 耗时 = 基础 RTT + 计算开销 + 随机抖动 (tChain 被解耦)
 		q_ttfb := baseRTT + cryptoOverhead + jitter
 

@@ -149,7 +149,7 @@ func (s *RelayServer) sendError(conn net.Conn, replyToID string, code atriumv1.C
 	statusPkt := &atriumv1.Packet{
 		Header: &atriumv1.Header{
 			Timestamp:    time.Now().UnixMilli(),
-			FromDid:      "did:qlink:relay", // Relay 自己的 ID
+			FromDid:      "did:atrium:relay", // Relay 自己的 ID
 			RequestId:    replyToID,
 			Code:         code,
 			SessionState: atriumv1.SessionState_SESSION_STATE_ABORTED,

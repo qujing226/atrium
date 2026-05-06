@@ -29,14 +29,14 @@ func main() {
 	latencyMs := flag.Int("latency", 500, "Simulated blockchain consensus latency in ms")
 	flag.Parse()
 
-	fmt.Printf("=== QLink Abstract Oracle (Latency: %dms) ===\n", *latencyMs)
+	fmt.Printf("=== Atrium Abstract Oracle (Latency: %dms) ===\n", *latencyMs)
 
 	latency := time.Duration(*latencyMs) * time.Millisecond
 	oracle := blockchain.NewOracle(latency)
 
 	// Pre-seed some default identities (Optional, as clients will now auto-register)
 	for _, name := range []string{"alice", "bob"} {
-		did := "did:qlink:" + name
+		did := "did:atrium:" + name
 		edPk, _, _ := ed25519.GenerateKey(rand.Reader)
 		kyberPk, _, _ := kyber768.GenerateKeyPair(rand.Reader)
 		kyberPkBytes := make([]byte, kyber768.PublicKeySize)

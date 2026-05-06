@@ -35,7 +35,7 @@ type Client struct {
 	OnMessage func(sender string, msg []byte)
 }
 
-// NewClient creates a new QLink client with Optimistic Cache integration.
+// NewClient creates a new Atrium client with Optimistic Cache integration.
 func NewClient(did string, chain *blockchain.OptimisticCache, relayAddr string) (*Client, error) {
 	signKp, err := secure.NewSignKeyPair()
 	if err != nil {
