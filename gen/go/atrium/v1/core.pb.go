@@ -7,9 +7,9 @@
 package atriumv1
 
 import (
-	_ "github.com/qujing226/atrium/gen/go/buf/validate"
-	_ "github.com/qujing226/atrium/gen/go/vendor/daotl/protoc-gen-go-enums"
-	_ "github.com/qujing226/atrium/gen/go/vendor/daotl/protoc-gen-go-string-consts"
+	_ "buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go/buf/validate"
+	_ "github.com/daotl/protoc-gen-go-enums/pbgen"
+	_ "github.com/daotl/protoc-gen-go-string-consts/pbgen"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"
@@ -225,7 +225,7 @@ func (x *Header) GetTimestamp() int64 {
 // and signs with user's ed2519 private key
 type Credential struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Signature     string                 `protobuf:"bytes,1,opt,name=signature,proto3" json:"signature,omitempty"`
+	Signature     []byte                 `protobuf:"bytes,1,opt,name=signature,proto3" json:"signature,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -260,11 +260,11 @@ func (*Credential) Descriptor() ([]byte, []int) {
 	return file_atrium_v1_core_proto_rawDescGZIP(), []int{1}
 }
 
-func (x *Credential) GetSignature() string {
+func (x *Credential) GetSignature() []byte {
 	if x != nil {
 		return x.Signature
 	}
-	return ""
+	return nil
 }
 
 var File_atrium_v1_core_proto protoreflect.FileDescriptor
@@ -282,7 +282,7 @@ const file_atrium_v1_core_proto_rawDesc = "" +
 	"\ttimestamp\x18\x06 \x01(\x03B\a\xbaH\x04\"\x02 \x00R\ttimestamp\"*\n" +
 	"\n" +
 	"Credential\x12\x1c\n" +
-	"\tsignature\x18\x01 \x01(\tR\tsignature*\xd0\x01\n" +
+	"\tsignature\x18\x01 \x01(\fR\tsignature*\xd0\x01\n" +
 	"\x04Code\x12\x14\n" +
 	"\x10CODE_UNSPECIFIED\x10\x00\x12\x10\n" +
 	"\fCODE_SUCCESS\x10\x01\x12\"\n" +

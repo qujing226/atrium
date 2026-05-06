@@ -6,8 +6,8 @@ import (
 	"sync"
 	"time"
 
-	didv1 "github.com/qujing226/QLink/spec/gen/qlink/did/v1"
-	"github.com/qujing226/QLink/spec/pkg/secure"
+	atriumv1 "github.com/qujing226/atrium/gen/go/atrium/v1"
+	"github.com/qujing226/atrium/pkg/secure"
 )
 
 // MaxPendingMessages defines the High-Water Mark for the isolation buffer.
@@ -25,7 +25,7 @@ const (
 // It implements the "Data Gate" logic defined in the protocol specification.
 type Session struct {
 	PeerDid string
-	State   didv1.SessionState
+	State   atriumv1.SessionState
 
 	// Cryptographic Ratchets
 	TxRatchet *secure.ChainKey // My outgoing chain
@@ -44,7 +44,7 @@ type Session struct {
 }
 
 // NewSession initializes a session.
-func NewSession(peerDid string, initialState didv1.SessionState, txKey, rxKey *secure.ChainKey) *Session {
+func NewSession(peerDid string, initialState atriumv1.SessionState, txKey, rxKey *secure.ChainKey) *Session {
 	return &Session{
 		PeerDid:     peerDid,
 		State:       initialState,
@@ -79,7 +79,7 @@ func (s *Session) NeedsEpochKEM() bool {
 
 	deltaT := time.Since(s.lastKemTime).Seconds()
 	currentRisk := (LeakPerSecond * deltaT) + (LeakPerMessage * float64(s.msgCount))
-	
+
 	return currentRisk >= SecurityBudget
 }
 
@@ -89,26 +89,26 @@ func (s *Session) ProcessIncomingMsg(plaintext []byte) (deliverNow bool, err err
 	defer s.mu.Unlock()
 
 	switch s.State {
-	case didv1.SessionState_SESSION_STATE_VERIFIED:
+	case atriumv1.SessionState_SESSION_STATE_VERIFIED:
 		// Gate Open: Deliver immediately
 		return true, nil
 
-	case didv1.SessionState_SESSION_STATE_SPECULATIVE:
+	case atriumv1.SessionState_SESSION_STATE_SPECULATIVE:
 		// Gate Closed: Buffer the message
 		if len(s.PendingMsgs) >= MaxPendingMessages {
 			// DoS Protection: High-Water Mark exceeded
 			s.abortLocked()
 			return false, errors.New("isolation buffer overflow: session aborted")
 		}
-		
+
 		// Copy buffer to prevent modification
 		msgCopy := make([]byte, len(plaintext))
 		copy(msgCopy, plaintext)
 		s.PendingMsgs = append(s.PendingMsgs, msgCopy)
-		
+
 		return false, nil
 
-	case didv1.SessionState_SESSION_STATE_ABORTED:
+	case atriumv1.SessionState_SESSION_STATE_ABORTED:
 		return false, errors.New("session is aborted")
 
 	default:
@@ -121,18 +121,18 @@ func (s *Session) UpgradeToVerified() [][]byte {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	if s.State != didv1.SessionState_SESSION_STATE_SPECULATIVE {
+	if s.State != atriumv1.SessionState_SESSION_STATE_SPECULATIVE {
 		return nil // Already verified or aborted
 	}
 
 	// Atomic Transition
-	s.State = didv1.SessionState_SESSION_STATE_VERIFIED
-	
+	s.State = atriumv1.SessionState_SESSION_STATE_VERIFIED
+
 	// Flush Buffer
 	if len(s.PendingMsgs) == 0 {
 		return nil
 	}
-	
+
 	out := s.PendingMsgs
 	s.PendingMsgs = nil // Clear reference
 	return out
@@ -146,18 +146,18 @@ func (s *Session) Abort() {
 }
 
 func (s *Session) abortLocked() {
-	if s.State == didv1.SessionState_SESSION_STATE_ABORTED {
+	if s.State == atriumv1.SessionState_SESSION_STATE_ABORTED {
 		return
 	}
-	
+
 	fmt.Printf("[Session %s] ABORTING! Destroying keys and buffer.\n", s.PeerDid)
-	
-	s.State = didv1.SessionState_SESSION_STATE_ABORTED
+
+	s.State = atriumv1.SessionState_SESSION_STATE_ABORTED
 	s.PendingMsgs = nil // Secure deletion (let GC handle memory wiping)
 }
 
 func (s *Session) IsAborted() bool {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	return s.State == didv1.SessionState_SESSION_STATE_ABORTED
+	return s.State == atriumv1.SessionState_SESSION_STATE_ABORTED
 }

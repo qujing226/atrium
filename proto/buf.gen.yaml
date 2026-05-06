@@ -2,6 +2,9 @@ version: v2
 
 managed:
   enabled: true
+  disable:
+    - module: buf.build/bufbuild/protovalidate
+    - path: vendor
   override:
     - file_option: go_package_prefix
       value: github.com/qujing226/atrium/gen/go

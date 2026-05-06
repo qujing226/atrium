@@ -5,9 +5,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/qujing226/QLink/spec/pkg/blockchain"
-	"github.com/qujing226/QLink/spec/pkg/client"
-	"github.com/qujing226/QLink/spec/pkg/server"
+	"github.com/qujing226/atrium/pkg/blockchain"
+	"github.com/qujing226/atrium/pkg/client"
+	"github.com/qujing226/atrium/pkg/server"
 )
 
 const (

@@ -7,6 +7,7 @@
 package atriumv1
 
 import (
+	_ "buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go/buf/validate"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"
@@ -143,10 +144,10 @@ var File_atrium_v1_app_proto protoreflect.FileDescriptor
 
 const file_atrium_v1_app_proto_rawDesc = "" +
 	"\n" +
-	"\x13atrium/v1/app.proto\x12\tatrium.v1\">\n" +
-	"\vChatMessage\x12\x12\n" +
-	"\x04text\x18\x01 \x01(\tR\x04text\x12\x1b\n" +
-	"\tis_typing\x18\x02 \x01(\bR\bisTyping\"E\n" +
+	"\x13atrium/v1/app.proto\x12\tatrium.v1\x1a\x1bbuf/validate/validate.proto\"N\n" +
+	"\vChatMessage\x12\x1a\n" +
+	"\x04text\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x04text\x12#\n" +
+	"\tis_typing\x18\x02 \x01(\bB\x06\xbaH\x03\xc8\x01\x01R\bisTyping\"E\n" +
 	"\n" +
 	"AppMessage\x12,\n" +
 	"\x04chat\x18\x01 \x01(\v2\x16.atrium.v1.ChatMessageH\x00R\x04chatB\t\n" +

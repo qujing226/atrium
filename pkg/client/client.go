@@ -11,10 +11,10 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	didv1 "github.com/qujing226/QLink/spec/gen/qlink/did/v1"
-	"github.com/qujing226/QLink/spec/pkg/blockchain"
-	"github.com/qujing226/QLink/spec/pkg/connect"
-	"github.com/qujing226/QLink/spec/pkg/secure"
+	atriumv1 "github.com/qujing226/atrium/gen/go/atrium/v1"
+	"github.com/qujing226/atrium/pkg/blockchain"
+	"github.com/qujing226/atrium/pkg/connect"
+	"github.com/qujing226/atrium/pkg/secure"
 )
 
 type Client struct {
@@ -95,15 +95,15 @@ func (c *Client) OnChainVerification(targetDid string, cached, fresh []byte) {
 
 		// 1. Send Error Signal to Peer (Proactive Propagation)
 		// We try to send this even if we are about to close.
-		statusPkt := &didv1.Packet{
+		statusPkt := &atriumv1.Packet{
 			Header: c.newHeader(targetDid),
-			Payload: &didv1.Packet_Status{
-				Status: &didv1.Status{
-					Code:    didv1.Status_CODE_ERROR_VERIFICATION_FAILED,
-					Message: "Blockchain mismatch detected during asynchronous verification",
+			Payload: &atriumv1.Packet_Error{
+				Error: &atriumv1.Error{
+					Error: "Blockchain mismatch detected during asynchronous verification",
 				},
 			},
 		}
+		statusPkt.Header.Code = atriumv1.Code_CODE_ERROR_VERIFICATION_FAILED
 		if c.Conn != nil {
 			connect.WritePacket(c.Conn, statusPkt)
 		}
@@ -124,12 +124,14 @@ func (c *Client) Start() error {
 	c.Conn = conn
 	fmt.Printf("[%s] Online at %s\n", c.Did, c.RelayAddr)
 
-	regPkt := &didv1.Packet{
+	regPkt := &atriumv1.Packet{
 		Header: c.newHeader(""),
-		Payload: &didv1.Packet_Status{
-			Status: &didv1.Status{Code: didv1.Status_CODE_SUCCESS, Message: "Register"},
+		// For registration, we can just use a dummy payload or maybe just header since Relay only cares about FromDid
+		Payload: &atriumv1.Packet_Error{
+			Error: &atriumv1.Error{Error: "Register"}, // We will change relay logic later if needed
 		},
 	}
+	regPkt.Header.Code = atriumv1.Code_CODE_SUCCESS
 	if err := connect.WritePacket(c.Conn, regPkt); err != nil {
 		return err
 	}
@@ -149,16 +151,16 @@ func (c *Client) readLoop() {
 	}
 }
 
-func (c *Client) handlePacket(pkt *didv1.Packet) {
+func (c *Client) handlePacket(pkt *atriumv1.Packet) {
 	switch p := pkt.Payload.(type) {
-	case *didv1.Packet_KemInit:
+	case *atriumv1.Packet_KemInit:
 		c.handleKemInit(pkt.Header, p.KemInit)
-	case *didv1.Packet_KemConfirm:
+	case *atriumv1.Packet_KemConfirm:
 		c.handleKemConfirm(pkt.Header, p.KemConfirm)
-	case *didv1.Packet_SecureMessage:
+	case *atriumv1.Packet_SecureMessage:
 		c.handleSecureMessage(pkt.Header, p.SecureMessage)
-	case *didv1.Packet_Status:
-		c.handleStatus(pkt.Header, p.Status)
+	case *atriumv1.Packet_Error:
+		c.handleStatus(pkt.Header, p.Error)
 	}
 }
 
@@ -177,9 +179,9 @@ func (c *Client) Handshake(targetDid string) error {
 	}
 
 	// Determine Initial State
-	initialState := didv1.SessionState_SESSION_STATE_VERIFIED
+	initialState := atriumv1.SessionState_SESSION_STATE_VERIFIED
 	if duration < 10*time.Millisecond {
-		initialState = didv1.SessionState_SESSION_STATE_SPECULATIVE
+		initialState = atriumv1.SessionState_SESSION_STATE_SPECULATIVE
 	}
 
 	// 2. Crypto Setup
@@ -205,11 +207,12 @@ func (c *Client) Handshake(targetDid string) error {
 	rand.Read(nonce)
 	sig, _ := c.SignKeys.Sign(append(ct, nonce...))
 
-	pkt := &didv1.Packet{
+	pkt := &atriumv1.Packet{
 		Header: c.newHeader(targetDid),
-		Payload: &didv1.Packet_KemInit{
-			KemInit: &didv1.KEMInit{Ct: ct, Nonce: nonce, Signature: sig},
+		Payload: &atriumv1.Packet_KemInit{
+			KemInit: &atriumv1.KEMInit{Ct: ct, Nonce: nonce},
 		},
+		Credential: &atriumv1.Credential{Signature: sig},
 	}
 	if err := connect.WritePacket(c.Conn, pkt); err != nil {
 		return err
@@ -224,7 +227,7 @@ func (c *Client) Handshake(targetDid string) error {
 	}
 }
 
-func (c *Client) handleKemInit(header *didv1.Header, body *didv1.KEMInit) {
+func (c *Client) handleKemInit(header *atriumv1.Header, body *atriumv1.KEMInit) {
 	// Symmetric: Responder also resolves/verifies
 	_, err := c.Chain.Resolve(header.FromDid)
 	if err != nil {
@@ -232,7 +235,7 @@ func (c *Client) handleKemInit(header *didv1.Header, body *didv1.KEMInit) {
 	}
 
 	// Assume Speculative for responder (simplification for prototype)
-	initialState := didv1.SessionState_SESSION_STATE_SPECULATIVE
+	initialState := atriumv1.SessionState_SESSION_STATE_SPECULATIVE
 
 	ss, err := c.KemKeys.Decapsulate(body.Ct)
 	if err != nil {
@@ -247,16 +250,17 @@ func (c *Client) handleKemInit(header *didv1.Header, body *didv1.KEMInit) {
 	c.mu.Unlock()
 
 	sig, _ := c.SignKeys.Sign(body.Nonce)
-	resp := &didv1.Packet{
+	resp := &atriumv1.Packet{
 		Header: c.newHeader(header.FromDid),
-		Payload: &didv1.Packet_KemConfirm{
-			KemConfirm: &didv1.KEMConfirm{NonceHash: body.Nonce, Signature: sig},
+		Payload: &atriumv1.Packet_KemConfirm{
+			KemConfirm: &atriumv1.KEMConfirm{NonceHash: body.Nonce},
 		},
+		Credential: &atriumv1.Credential{Signature: sig},
 	}
 	connect.WritePacket(c.Conn, resp)
 }
 
-func (c *Client) handleKemConfirm(header *didv1.Header, body *didv1.KEMConfirm) {
+func (c *Client) handleKemConfirm(header *atriumv1.Header, body *atriumv1.KEMConfirm) {
 	select {
 	case c.handshakeChan <- nil:
 	default:
@@ -301,10 +305,10 @@ func (c *Client) SendMessage(msg string) error {
 		sess.ResetEpochKEM()
 	}
 
-	pkt := &didv1.Packet{
+	pkt := &atriumv1.Packet{
 		Header: c.newHeader(sess.PeerDid),
-		Payload: &didv1.Packet_SecureMessage{
-			SecureMessage: &didv1.SecureMessage{
+		Payload: &atriumv1.Packet_SecureMessage{
+			SecureMessage: &atriumv1.SecureMessage{
 				SequenceNumber: sess.TxSeq,
 				Ciphertext:     ciphertext,
 				Nonce:          nonce,
@@ -314,7 +318,7 @@ func (c *Client) SendMessage(msg string) error {
 	return connect.WritePacket(c.Conn, pkt)
 }
 
-func (c *Client) handleSecureMessage(header *didv1.Header, body *didv1.SecureMessage) {
+func (c *Client) handleSecureMessage(header *atriumv1.Header, body *atriumv1.SecureMessage) {
 	c.mu.Lock()
 	sess := c.CurrentSession
 	c.mu.Unlock() // Unlock early, Session has its own lock
@@ -353,8 +357,8 @@ func (c *Client) handleSecureMessage(header *didv1.Header, body *didv1.SecureMes
 	}
 }
 
-func (c *Client) handleStatus(header *didv1.Header, status *didv1.Status) {
-	if status.Code == didv1.Status_CODE_ERROR_VERIFICATION_FAILED {
+func (c *Client) handleStatus(header *atriumv1.Header, errPayload *atriumv1.Error) {
+	if header.Code == atriumv1.Code_CODE_ERROR_VERIFICATION_FAILED {
 		c.mu.Lock()
 		sess := c.CurrentSession
 		c.mu.Unlock()
@@ -367,8 +371,8 @@ func (c *Client) handleStatus(header *didv1.Header, status *didv1.Status) {
 	}
 }
 
-func (c *Client) newHeader(to string) *didv1.Header {
-	return &didv1.Header{
+func (c *Client) newHeader(to string) *atriumv1.Header {
+	return &atriumv1.Header{
 		RequestId: uuid.New().String(),
 		FromDid:   c.Did,
 		ToDid:     to,

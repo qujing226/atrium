@@ -10,8 +10,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/qujing226/QLink/spec/pkg/blockchain"
-	"github.com/qujing226/QLink/spec/pkg/client"
+	"github.com/qujing226/atrium/pkg/blockchain"
+	"github.com/qujing226/atrium/pkg/client"
 )
 
 func main() {
@@ -27,7 +27,7 @@ func main() {
 
 	remoteOracle := blockchain.NewRemoteOracle(*oracleUrl)
 	var c *client.Client
-	
+
 	cache := blockchain.NewOptimisticCache(remoteOracle, func(did string, c_bytes, f_bytes []byte) {
 		if c != nil {
 			c.OnChainVerification(did, c_bytes, f_bytes)
@@ -63,9 +63,13 @@ func main() {
 	scanner := bufio.NewScanner(os.Stdin)
 	for {
 		fmt.Print("> ")
-		if !scanner.Scan() { break }
+		if !scanner.Scan() {
+			break
+		}
 		text := strings.TrimSpace(scanner.Text())
-		if text == "" { continue }
+		if text == "" {
+			continue
+		}
 
 		if text == "/connect" {
 			start := time.Now()
@@ -82,7 +86,7 @@ func main() {
 
 func runBenchmark(c *client.Client, peerDid string, iterations int) {
 	fmt.Printf("!!! STARTING BENCHMARK: %d iterations !!!\n", iterations)
-	
+
 	file, _ := os.Create("latency_metrics.csv")
 	defer file.Close()
 	writer := csv.NewWriter(file)
@@ -91,7 +95,7 @@ func runBenchmark(c *client.Client, peerDid string, iterations int) {
 
 	for i := 1; i <= iterations; i++ {
 		fmt.Printf("Iteration %d/%d...\n", i, iterations)
-		
+
 		start := time.Now()
 		err := c.Handshake(peerDid)
 		duration := time.Since(start)

@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"time"
 
-	didv1 "github.com/qujing226/QLink/spec/gen/qlink/did/v1"
-	"github.com/qujing226/QLink/spec/pkg/blockchain"
-	"github.com/qujing226/QLink/spec/pkg/client"
-	"github.com/qujing226/QLink/spec/pkg/server"
+	didv1 "github.com/qujing226/atrium/gen/go/atrium/v1"
+	"github.com/qujing226/atrium/pkg/blockchain"
+	"github.com/qujing226/atrium/pkg/client"
+	"github.com/qujing226/atrium/pkg/server"
 )
 
 const (
@@ -35,16 +35,16 @@ func main() {
 	// Let's fix this wiring.
 	// We need a way to link the Cache callback to the Client instance.
 	// Since Client is created AFTER Cache, we can use a closure proxy.
-	
+
 	var aliceClient *client.Client
-	var bobClient   *client.Client
+	var bobClient *client.Client
 
 	aliceCache := blockchain.NewOptimisticCache(oracle, func(did string, c, f []byte) {
 		if aliceClient != nil {
 			aliceClient.OnChainVerification(did, c, f)
 		}
 	})
-	
+
 	bobCache := blockchain.NewOptimisticCache(oracle, func(did string, c, f []byte) {
 		if bobClient != nil {
 			bobClient.OnChainVerification(did, c, f)
@@ -54,14 +54,18 @@ func main() {
 	// 3. Init Clients
 	var err error
 	bobClient, err = client.NewClient("did:qlink:bob", bobCache, RelayAddr)
-	if err != nil { panic(err) }
+	if err != nil {
+		panic(err)
+	}
 	bobClient.OnMessage = func(sender string, msg []byte) {
 		fmt.Printf("✅ [Bob App] RECEIVED: '%s'\n", string(msg))
 	}
 	bobClient.Start()
 
 	aliceClient, err = client.NewClient("did:qlink:alice", aliceCache, RelayAddr)
-	if err != nil { panic(err) }
+	if err != nil {
+		panic(err)
+	}
 	aliceClient.OnMessage = func(sender string, msg []byte) {
 		fmt.Printf("✅ [Alice App] RECEIVED: '%s'\n", string(msg))
 	}
@@ -77,7 +81,7 @@ func main() {
 		panic(err)
 	}
 	// Wait for background verification to complete and cache to be marked valid
-	time.Sleep(1 * time.Second) 
+	time.Sleep(1 * time.Second)
 	fmt.Println(">>> Phase 1 Complete. Caches are warm.")
 
 	// =========================================================================
@@ -109,12 +113,12 @@ func main() {
 	aliceClient.SendMessage("My Secret Payload")
 
 	fmt.Println(">>> Waiting for Background Verification (500ms)...")
-	
+
 	// =========================================================================
 	// Phase 4: The Truth Revealed (Eventual Consistency)
 	// =========================================================================
 	time.Sleep(1 * time.Second)
-	
+
 	fmt.Println("\n--- Simulation Complete ---")
 	fmt.Println("Check the logs above:")
 	fmt.Println("1. Did Alice report 'CRITICAL: Chain mismatch'?")

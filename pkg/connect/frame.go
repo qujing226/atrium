@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"net"
 
-	didv1 "github.com/qujing226/QLink/spec/gen/qlink/did/v1"
+	didv1 "github.com/qujing226/atrium/gen/go/atrium/v1"
 	"google.golang.org/protobuf/proto"
 )
 

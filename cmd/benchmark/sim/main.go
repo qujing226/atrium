@@ -6,9 +6,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/qujing226/QLink/spec/pkg/blockchain"
-	"github.com/qujing226/QLink/spec/pkg/client"
-	"github.com/qujing226/QLink/spec/pkg/server"
+	"github.com/qujing226/atrium/pkg/blockchain"
+	"github.com/qujing226/atrium/pkg/client"
+	"github.com/qujing226/atrium/pkg/server"
 )
 
 const (
@@ -18,10 +18,10 @@ const (
 
 // Simulator configurations
 type SimConfig struct {
-	PacketLossRate  float64
-	NetworkJitter   time.Duration
-	ChainReorgRate  float64 // Probability that a "verified" chain state gets rolled back later
-	MaxRetries      int
+	PacketLossRate float64
+	NetworkJitter  time.Duration
+	ChainReorgRate float64 // Probability that a "verified" chain state gets rolled back later
+	MaxRetries     int
 }
 
 // ProbabilisticOracle injects realistic chain failures (reorgs/auth errors)
@@ -76,10 +76,14 @@ func runRealWorldExperiment(iterations int, cfg SimConfig) {
 	for i := 0; i < iterations; i++ {
 		var aliceClient, bobClient *client.Client
 		aliceCache := blockchain.NewOptimisticCache(oracle, func(did string, c, f []byte) {
-			if aliceClient != nil { aliceClient.OnChainVerification(did, c, f) }
+			if aliceClient != nil {
+				aliceClient.OnChainVerification(did, c, f)
+			}
 		})
 		bobCache := blockchain.NewOptimisticCache(oracle, func(did string, c, f []byte) {
-			if bobClient != nil { bobClient.OnChainVerification(did, c, f) }
+			if bobClient != nil {
+				bobClient.OnChainVerification(did, c, f)
+			}
 		})
 
 		aliceClient, _ = client.NewClient(fmt.Sprintf("did:alice:%d", i), aliceCache, RealWorldRelayAddr)
@@ -116,7 +120,7 @@ func runRealWorldExperiment(iterations int, cfg SimConfig) {
 				SuccessfulAborts++
 			}
 		}
-		
+
 		aliceClient.Conn.Close()
 		bobClient.Conn.Close()
 	}
@@ -130,11 +134,11 @@ func runRealWorldExperiment(iterations int, cfg SimConfig) {
 func main() {
 	rand.Seed(time.Now().UnixNano())
 	cfg := SimConfig{
-		PacketLossRate: 0.10, 
+		PacketLossRate: 0.10,
 		NetworkJitter:  200 * time.Millisecond,
-		ChainReorgRate: 0.05, 
+		ChainReorgRate: 0.05,
 		MaxRetries:     1,
 	}
-	
-	runRealWorldExperiment(10, cfg) 
+
+	runRealWorldExperiment(10, cfg)
 }

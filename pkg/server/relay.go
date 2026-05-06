@@ -6,8 +6,8 @@ import (
 	"sync"
 	"time"
 
-	didv1 "github.com/qujing226/QLink/spec/gen/qlink/did/v1"
-	"github.com/qujing226/QLink/spec/pkg/connect"
+	atriumv1 "github.com/qujing226/atrium/gen/go/atrium/v1"
+	"github.com/qujing226/atrium/pkg/connect"
 )
 
 // RelayServer 是一个并不“聪明”的转发器
@@ -62,7 +62,7 @@ func (s *RelayServer) Stop() {
 
 func (s *RelayServer) handleConn(conn net.Conn) {
 	defer conn.Close()
-	
+
 	// 简单的连接标识，用于日志
 	remoteAddr := conn.RemoteAddr().String()
 	// fmt.Printf("[Relay] New connection from %s\n", remoteAddr)
@@ -120,7 +120,7 @@ func (s *RelayServer) handleConn(conn net.Conn) {
 		} else {
 			// 目标不在线，返回错误状态
 			// fmt.Printf("[Relay] Target not found: %s\n", to)
-			s.sendError(conn, pkt.Header.RequestId, didv1.Status_CODE_ERROR_PROTOCOL_VIOLATION, "Target DID not connected")
+			s.sendError(conn, pkt.Header.RequestId, atriumv1.Code_CODE_ERROR_PROTOCOL_VIOLATION, "Target DID not connected")
 		}
 	}
 }
@@ -145,17 +145,18 @@ func (s *RelayServer) getClient(did string) net.Conn {
 	return s.clients[did]
 }
 
-func (s *RelayServer) sendError(conn net.Conn, replyToID string, code didv1.Status_Code, msg string) {
-	statusPkt := &didv1.Packet{
-		Header: &didv1.Header{
-			Timestamp: time.Now().UnixMilli(),
-			FromDid:   "did:qlink:relay", // Relay 自己的 ID
+func (s *RelayServer) sendError(conn net.Conn, replyToID string, code atriumv1.Code, msg string) {
+	statusPkt := &atriumv1.Packet{
+		Header: &atriumv1.Header{
+			Timestamp:    time.Now().UnixMilli(),
+			FromDid:      "did:qlink:relay", // Relay 自己的 ID
+			RequestId:    replyToID,
+			Code:         code,
+			SessionState: atriumv1.SessionState_SESSION_STATE_ABORTED,
 		},
-		Payload: &didv1.Packet_Status{
-			Status: &didv1.Status{
-				ReplyToId: replyToID,
-				Code:      code,
-				Message:   msg,
+		Payload: &atriumv1.Packet_Error{
+			Error: &atriumv1.Error{
+				Error: msg,
 			},
 		},
 	}

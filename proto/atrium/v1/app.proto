@@ -2,9 +2,11 @@ syntax = "proto3";
 
 package atrium.v1;
 
+import "buf/validate/validate.proto";
+
 message ChatMessage{
-  string text = 1;
-  bool is_typing = 2;
+  string text = 1 [(buf.validate.field).required = true];
+  bool is_typing = 2 [(buf.validate.field).required = true];
 }
 
 message AppMessage {

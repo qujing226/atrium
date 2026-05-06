@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"github.com/cloudflare/circl/kem/kyber/kyber768"
-	"github.com/qujing226/QLink/spec/pkg/blockchain"
+	"github.com/qujing226/atrium/pkg/blockchain"
 )
 
 type ResolveResponse struct {
@@ -30,7 +30,7 @@ func main() {
 	flag.Parse()
 
 	fmt.Printf("=== QLink Abstract Oracle (Latency: %dms) ===\n", *latencyMs)
-	
+
 	latency := time.Duration(*latencyMs) * time.Millisecond
 	oracle := blockchain.NewOracle(latency)
 
@@ -41,7 +41,7 @@ func main() {
 		kyberPk, _, _ := kyber768.GenerateKeyPair(rand.Reader)
 		kyberPkBytes := make([]byte, kyber768.PublicKeySize)
 		kyberPk.Pack(kyberPkBytes)
-		doc := make([]byte, 32 + kyber768.PublicKeySize)
+		doc := make([]byte, 32+kyber768.PublicKeySize)
 		copy(doc[0:32], edPk)
 		copy(doc[32:], kyberPkBytes)
 		oracle.Register(did, doc)

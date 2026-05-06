@@ -3,7 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
-	"github.com/qujing226/QLink/spec/pkg/server"
+	"github.com/qujing226/atrium/pkg/server"
 )
 
 func main() {
@@ -11,7 +11,7 @@ func main() {
 	flag.Parse()
 
 	fmt.Println("=== QLink Relay Server ===")
-	
+
 	relay := server.NewRelayServer()
 	if err := relay.Start(*port); err != nil {
 		panic(err)

@@ -53,5 +53,5 @@ message Header {
 // which use the Post-Qutum hash algorithum ""
 // and signs with user's ed2519 private key
 message Credential {
-  string signature = 1;
+  bytes signature = 1;
 }
