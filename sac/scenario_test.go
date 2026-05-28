@@ -94,3 +94,88 @@ func TestScenarioSACDeliversAfterValidVerification(t *testing.T) {
 		t.Fatalf("invalid deliveries = %d, want 0", metrics.InvalidDeliveries)
 	}
 }
+
+func TestTLSBaselinesExposeDelayedVerifierTradeoffs(t *testing.T) {
+	workload := [][]byte{
+		[]byte("m1"),
+		[]byte("m2"),
+	}
+	verifierLatency := 250 * time.Millisecond
+
+	tlsLocal := RunScenario(Scenario{
+		Mode:            ModeTLSLocal,
+		VerifierLatency: verifierLatency,
+		EvidenceValid:   false,
+		Workload:        workload,
+	})
+	if tlsLocal.Delivered != len(workload) {
+		t.Fatalf("tls local delivered = %d, want %d", tlsLocal.Delivered, len(workload))
+	}
+	if tlsLocal.InvalidDeliveries != 0 {
+		t.Fatalf("tls local invalid deliveries = %d, want 0", tlsLocal.InvalidDeliveries)
+	}
+
+	tlsSync := RunScenario(Scenario{
+		Mode:            ModeTLSSyncVerifier,
+		VerifierLatency: verifierLatency,
+		EvidenceValid:   true,
+		Workload:        workload,
+	})
+	if tlsSync.TimeToFirstFrame != verifierLatency {
+		t.Fatalf("tls sync TTFF = %s, want %s", tlsSync.TimeToFirstFrame, verifierLatency)
+	}
+	if tlsSync.TimeToFirstVerifiedDelivery != verifierLatency {
+		t.Fatalf("tls sync TTFVD = %s, want %s", tlsSync.TimeToFirstVerifiedDelivery, verifierLatency)
+	}
+
+	tlsOptimistic := RunScenario(Scenario{
+		Mode:            ModeTLSOptimisticDelivery,
+		VerifierLatency: verifierLatency,
+		EvidenceValid:   false,
+		Workload:        workload,
+	})
+	if tlsOptimistic.InvalidDeliveries != len(workload) {
+		t.Fatalf("tls optimistic invalid deliveries = %d, want %d", tlsOptimistic.InvalidDeliveries, len(workload))
+	}
+
+	tlsGate := RunScenario(Scenario{
+		Mode:            ModeTLSAppGate,
+		VerifierLatency: verifierLatency,
+		EvidenceValid:   false,
+		Workload:        workload,
+		Config: Config{
+			MaxBufferedMessages: 4,
+			MaxBufferedBytes:    1024,
+		},
+	})
+	if tlsGate.TimeToFirstFrame != 0 {
+		t.Fatalf("tls app gate TTFF = %s, want 0", tlsGate.TimeToFirstFrame)
+	}
+	if tlsGate.InvalidDeliveries != 0 {
+		t.Fatalf("tls app gate invalid deliveries = %d, want 0", tlsGate.InvalidDeliveries)
+	}
+	if !tlsGate.Aborted {
+		t.Fatalf("tls app gate aborted = false, want true")
+	}
+}
+
+func TestCiphertextQueueDoesNotMakeSpeculativeCryptoProgress(t *testing.T) {
+	metrics := RunScenario(Scenario{
+		Mode:            ModeCiphertextQueue,
+		VerifierLatency: 100 * time.Millisecond,
+		EvidenceValid:   true,
+		Workload: [][]byte{
+			[]byte("queued"),
+		},
+	})
+
+	if metrics.TimeToFirstFrame != 100*time.Millisecond {
+		t.Fatalf("ciphertext queue TTFF = %s, want %s", metrics.TimeToFirstFrame, 100*time.Millisecond)
+	}
+	if metrics.SpeculativeDecrypts != 0 {
+		t.Fatalf("ciphertext queue speculative decrypts = %d, want 0", metrics.SpeculativeDecrypts)
+	}
+	if metrics.Delivered != 1 {
+		t.Fatalf("ciphertext queue delivered = %d, want 1", metrics.Delivered)
+	}
+}

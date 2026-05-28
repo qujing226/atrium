@@ -8,6 +8,11 @@ const (
 	ModeStrict Mode = iota
 	ModeOptimistic
 	ModeSAC
+	ModeTLSLocal
+	ModeTLSSyncVerifier
+	ModeTLSOptimisticDelivery
+	ModeTLSAppGate
+	ModeCiphertextQueue
 )
 
 type Scenario struct {
@@ -29,6 +34,8 @@ type Metrics struct {
 
 	DIGPeakMessages int
 	DIGPeakBytes    int
+
+	SpeculativeDecrypts int
 }
 
 func RunScenario(sc Scenario) Metrics {
@@ -43,10 +50,25 @@ func RunScenario(sc Scenario) Metrics {
 		return runOptimistic(sc, metrics)
 	case ModeSAC:
 		return runSAC(sc, metrics)
+	case ModeTLSLocal:
+		return runTLSLocal(sc, metrics)
+	case ModeTLSSyncVerifier:
+		return runStrict(sc, metrics)
+	case ModeTLSOptimisticDelivery:
+		return runOptimistic(sc, metrics)
+	case ModeTLSAppGate:
+		return runTLSAppGate(sc, metrics)
+	case ModeCiphertextQueue:
+		return runCiphertextQueue(sc, metrics)
 	default:
 		metrics.Aborted = true
 		return metrics
 	}
+}
+
+func runTLSLocal(sc Scenario, metrics Metrics) Metrics {
+	metrics.Delivered = len(sc.Workload)
+	return metrics
 }
 
 func runStrict(sc Scenario, metrics Metrics) Metrics {
@@ -83,6 +105,7 @@ func runSAC(sc Scenario, metrics Metrics) Metrics {
 			metrics.Aborted = true
 			return metrics
 		}
+		metrics.SpeculativeDecrypts++
 		metrics.DIGPeakMessages = max(metrics.DIGPeakMessages, i+1)
 		metrics.DIGPeakBytes += len(payload)
 	}
@@ -102,5 +125,51 @@ func runSAC(sc Scenario, metrics Metrics) Metrics {
 	if len(released) > 0 {
 		metrics.TimeToFirstVerifiedDelivery = sc.VerifierLatency
 	}
+	return metrics
+}
+
+func runTLSAppGate(sc Scenario, metrics Metrics) Metrics {
+	session := NewSession(sc.Config)
+	for i, payload := range sc.Workload {
+		_, err := session.ReceivePlaintext(Message{
+			Sequence: uint64(i + 1),
+			Payload:  payload,
+		})
+		if err != nil {
+			metrics.Aborted = true
+			return metrics
+		}
+		metrics.DIGPeakMessages = max(metrics.DIGPeakMessages, i+1)
+		metrics.DIGPeakBytes += len(payload)
+	}
+
+	if !sc.EvidenceValid {
+		_ = session.VerifyFailure(nil)
+		metrics.Aborted = true
+		return metrics
+	}
+
+	released, err := session.VerifySuccess()
+	if err != nil {
+		metrics.Aborted = true
+		return metrics
+	}
+	metrics.Delivered = len(released)
+	if len(released) > 0 {
+		metrics.TimeToFirstVerifiedDelivery = sc.VerifierLatency
+	}
+	return metrics
+}
+
+func runCiphertextQueue(sc Scenario, metrics Metrics) Metrics {
+	if !sc.EvidenceValid {
+		metrics.Aborted = true
+		return metrics
+	}
+	if len(sc.Workload) > 0 {
+		metrics.TimeToFirstFrame = sc.VerifierLatency
+		metrics.TimeToFirstVerifiedDelivery = sc.VerifierLatency
+	}
+	metrics.Delivered = len(sc.Workload)
 	return metrics
 }

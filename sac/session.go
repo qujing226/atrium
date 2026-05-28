@@ -61,16 +61,16 @@ type Session struct {
 }
 
 func NewSession(cfg Config) *Session {
-	return newSession(StateSpeculative, cfg)
+	return &Session{
+		state:  StateSpeculative,
+		cfg:    cfg,
+		buffer: make(map[uint64]Message),
+	}
 }
 
 func NewVerifiedSession(cfg Config) *Session {
-	return newSession(StateVerified, cfg)
-}
-
-func newSession(state State, cfg Config) *Session {
 	return &Session{
-		state:  state,
+		state:  StateVerified,
 		cfg:    cfg,
 		buffer: make(map[uint64]Message),
 	}
@@ -136,7 +136,7 @@ func (s *Session) VerifyFailure(cause error) error {
 	defer s.mu.Unlock()
 
 	if s.state == StateAborted {
-		return ErrAborted
+		return errors.New(ErrAborted.Error() + cause.Error())
 	}
 	s.abortLocked()
 	return nil
