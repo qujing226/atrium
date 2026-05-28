@@ -12,11 +12,15 @@ Related documents:
 
 This plan describes a minimal distributed deployment for evaluating Atrium as a SAC instantiation. The goal is not to prove that Atrium is faster than TLS in ordinary Web PKI settings. The goal is to measure whether SAC can preserve early cryptographic progress while preventing invalid application-visible delivery when authorization evidence is delayed or stale.
 
-The deployment should support three comparable modes:
+The deployment should support industrial baselines and mechanism ablations. The primary baselines are:
 
-1. Strict synchronous verification: wait for verifier success before channel establishment and delivery.
-2. Optimistic immediate delivery: use cached evidence and deliver immediately while verification runs.
-3. SAC/DIG: use cached evidence for cryptographic progress, isolate plaintext until verification succeeds, and abort on verification failure.
+1. TLS 1.3 local authentication.
+2. TLS 1.3 plus synchronous external verifier.
+3. TLS 1.3 plus optimistic immediate application delivery.
+4. TLS 1.3 plus application gate.
+5. SAC/DIG over the same workload and verifier schedule.
+
+The mechanism ablations are strict synchronous verification, optimistic immediate delivery, ciphertext queue, and SAC/DIG. These ablations explain causality, but the TLS variants provide the credible systems comparison.
 
 ## 2. Minimal Topology
 
@@ -25,7 +29,7 @@ The first deployment should use four independently configurable processes. They 
 | Node | Role | Requirement |
 | --- | --- | --- |
 | Initiator | Starts sessions and sends application payloads. | Records send time, first protected frame time, first verified delivery time, and aborts. |
-| Responder | Accepts sessions and receives payloads. | Enforces DIG and records delivery/rollback events. |
+| Responder | Accepts sessions and receives payloads. | Enforces the selected delivery policy and records delivery/rollback events. |
 | Relay | Routes frames by route ID. | Does not inspect payloads and can inject delay/drop/reorder policies. |
 | Verifier | Returns fresh authorization status. | Supports valid evidence, stale evidence, delayed success, delayed failure, and timeout scenarios. |
 
@@ -39,6 +43,10 @@ Run all four processes on localhost. This phase verifies message flow, state tra
 
 Required scenarios:
 
+- TLS 1.3 local authentication completes and delivers normally;
+- TLS 1.3 + synchronous verifier blocks delivery until verifier success;
+- TLS 1.3 + optimistic delivery produces invalid delivery under stale evidence;
+- TLS 1.3 + AppGate buffers and discards under stale evidence;
 - fresh evidence succeeds before any data arrives;
 - cached evidence enters `SPECULATIVE`, then verifies;
 - cached evidence enters `SPECULATIVE`, then fails;
@@ -57,7 +65,7 @@ Required verifier delay distribution:
 0 ms, 10 ms, 100 ms, 500 ms, 1 s, 5 s, 15 s
 ```
 
-For each delay, run all three modes against the same payload sizes, session counts, cache state, and failure schedule.
+For each delay, run all TLS variants and SAC/DIG against the same payload sizes, session counts, cache state, and failure schedule.
 
 ### 3.3 WAN Deployment
 
@@ -89,6 +97,7 @@ Required metrics:
 | `rollback_latency` | Verification failure to session abort and buffer clear. |
 | `abort_reason` | Verification failure, timeout, replay, epoch mismatch, DIG overflow, or parse/auth failure. |
 | `epoch_kem_count` | Number of epoch refreshes per session. |
+| `mode` | One of `tls_local`, `tls_sync_verifier`, `tls_optimistic`, `tls_app_gate`, `sac`, or a mechanism ablation. |
 
 ## 5. Workloads
 
@@ -109,11 +118,14 @@ The expected qualitative behavior is:
 
 | Mode | Early cryptographic progress | Invalid delivery risk | Verifier latency exposure |
 | --- | --- | --- | --- |
-| Strict sync | no | no | high |
-| Optimistic immediate | yes | yes | low |
-| SAC/DIG | yes | no, if DIG is correctly enforced | low for cryptographic progress; delivery still waits for verification |
+| TLS 1.3 local auth | yes | not modeled for external stale evidence | none unless external verifier is added |
+| TLS 1.3 + sync verifier | TLS progresses, application waits | no | high for application visibility |
+| TLS 1.3 + optimistic delivery | yes | yes under stale evidence | low |
+| TLS 1.3 + AppGate | yes | no if gate is correct | low for transport, high for verified delivery |
+| SAC/DIG | yes | no if DIG is correct | low for cryptographic progress, high for verified delivery |
+| Ciphertext queue ablation | no speculative decrypt/state advance | no | high for cryptographic progress |
 
-The paper should not claim that SAC eliminates all latency. SAC can hide verifier latency from cryptographic progress and transport setup, but verified application delivery still depends on verifier completion.
+The paper should not claim that SAC beats TLS 1.3. TLS 1.3 local authentication is a mature lower-bound reference when authorization is locally available. The relevant comparison is delayed external authorization: TLS+Sync is safe but blocks visibility, TLS+Optimistic is unsafe under stale evidence, TLS+AppGate is the strongest practical baseline, and SAC/DIG formalizes the delivery boundary as channel semantics.
 
 ## 7. Limitations
 

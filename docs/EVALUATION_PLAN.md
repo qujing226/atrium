@@ -68,19 +68,40 @@ Primary metrics:
 
 ## 3. Baselines
 
-The minimum baselines are:
+The evaluation uses two classes of baselines. Industrial baselines show how SAC relates to deployed secure channels. Mechanism baselines isolate why the SAC delivery semantics matter.
+
+### 3.1 Industrial Baselines
+
+TLS 1.3 is a required reference point, but it must be framed carefully. SAC is not evaluated as a replacement for TLS 1.3 in ordinary Web PKI settings. TLS 1.3 measures the cost of a mature secure channel when authentication is locally available. The delayed-authorization problem appears when an additional external verifier is required after or alongside channel establishment.
+
+| Name | Behavior | Purpose |
+| --- | --- | --- |
+| TLS 1.3 Local Auth | Standard TLS 1.3 with local certificate validation. | Industrial lower-bound reference for mature local-auth channels. |
+| TLS 1.3 + Sync Verifier | Establish TLS, then block application send/delivery until an external verifier accepts. | Strong safe baseline for delayed authorization. |
+| TLS 1.3 + Optimistic Delivery | Establish TLS, deliver immediately, and run external verification in the background. | Realistic unsafe optimization; exposes dirty delivery under stale evidence. |
+| TLS 1.3 + AppGate | Establish TLS, receive/decrypt records, but hold application delivery until verifier success. | Strongest practical baseline; tests whether SAC is more than ad hoc application buffering. |
+| SAC/DIG over the same transport | Establish provisional channel state, allow cryptographic progress, isolate plaintext behind DIG, and release only after verifier success. | Proposed channel semantics. |
+
+`TLS 1.3 + AppGate` is the most important adversarial baseline. If SAC only matches this baseline on latency and safety, the result should be stated honestly: the contribution is not raw speed over TLS, but a formal channel abstraction, explicit rollback semantics, and a reusable delivery boundary that can be instantiated beyond TLS.
+
+### 3.2 Mechanism Ablations
+
+Mechanism baselines are not sufficient as the only comparison, but they are useful for explaining causality.
 
 | Name | Behavior | Expected Strength | Expected Weakness |
 | --- | --- | --- | --- |
 | Strict Sync Verification | Blocks channel establishment until verifier returns. | No dirty delivery. | Startup latency grows with verifier latency. |
 | Optimistic Immediate Delivery | Uses cached evidence and delivers plaintext immediately. | Low startup latency. | Dirty delivery under stale evidence. |
-| SAC/DIG | Uses cached evidence but isolates plaintext until verification. | Low protected-frame latency and no dirty delivery. | Memory overhead and delayed application delivery. |
+| Ciphertext Queue | Queues ciphertext until verification, then decrypts and delivers. | No dirty delivery. | No speculative cryptographic progress, replay validation, or ratchet advancement. |
+| SAC/DIG | Decrypts and advances channel state speculatively but isolates plaintext until verification. | Low protected-frame latency and no dirty delivery. | Memory overhead and delayed application delivery. |
 
-Optional baselines:
+### 3.3 Atrium-Specific Baselines
 
-- TLS-like local trust anchor baseline for local-verification lower bound.
-- Ciphertext queue baseline that does not advance ratchets until verification.
+Atrium-specific comparisons should be secondary until the SAC result is established:
+
 - Atrium without Epoch-KEM for long-session overhead comparison.
+- Atrium with strict DID verification.
+- Atrium with optimistic DID cache and no DIG.
 
 ## 4. Workloads
 
@@ -215,25 +236,31 @@ Each experiment should report:
 
 Experiments comparing multiple protocols MUST use the same workload, verifier delay trace, key-rotation schedule, and network topology.
 
+For TLS comparisons, all variants MUST use the same TLS configuration, cipher suite policy, certificate size, application payloads, verifier delay trace, and network topology. The only intended difference between `TLS 1.3 + Sync Verifier`, `TLS 1.3 + Optimistic Delivery`, and `TLS 1.3 + AppGate` is when application delivery becomes visible relative to external verifier completion.
+
 ## 8. Expected Results
 
 The expected qualitative results are:
 
-| Scenario | Strict Sync | Optimistic Immediate | SAC/DIG |
-| --- | --- | --- | --- |
-| Increasing verifier latency | TTFF grows with verifier latency. | TTFF stays low. | TTFF stays low. |
-| Stale cached evidence | No dirty delivery; startup blocks. | Dirty delivery rate tracks stale rate. | Invalid sessions abort without dirty delivery. |
-| Burst before verification | No burst accepted before verification. | Delivered immediately, including invalid data. | Buffered, then flushed or discarded. |
-| Proof starvation | Blocks or times out. | May deliver before proof arrives. | Aborts at speculative timeout. |
+| Scenario | TLS Local | TLS+Sync | TLS+Optimistic | TLS+AppGate | SAC/DIG |
+| --- | --- | --- | --- | --- | --- |
+| No delayed verifier | Strong performance reference. | Adds little overhead if verifier is local. | Similar to local. | Similar to local plus gate overhead. | Comparable only if instantiated over a similar transport. |
+| Increasing verifier latency | Not applicable unless external verifier is added. | Application visibility grows with verifier latency. | Application visibility stays low but may be unsafe. | Protected transport progresses; delivery waits. | Protected transport progresses; delivery waits. |
+| Stale cached evidence | Not modeled by local certificate validation. | No dirty delivery; startup or delivery blocks. | Dirty delivery rate tracks stale rate. | Invalid sessions discard buffered plaintext. | Invalid sessions abort without dirty delivery. |
+| Burst before verification | Not applicable. | Burst is delayed before delivery. | Burst is delivered immediately, including invalid data. | Burst is buffered at application gate. | Burst is isolated in DIG. |
+| Proof starvation | Not applicable. | Blocks or times out before delivery. | May deliver before proof arrives. | Gate times out and discards. | DIG times out and aborts. |
 
 The key result is not that SAC always minimizes application-visible delivery latency. SAC may delay delivery until verification. The key result is that it preserves transport progress and cryptographic continuity while preventing invalid application-visible semantic effects.
+
+The TLS+AppGate comparison should be interpreted as follows: if it performs similarly to SAC, that is evidence that the semantic pattern is practical over mature secure channels. SAC's contribution is then the abstraction, state machine, rollback rule, and portability of the pattern, not an artificial claim of outperforming TLS.
 
 ## 9. Minimum Reproducible Artifact
 
 A minimum artifact should include:
 
 - a deterministic verifier with configurable delay and stale-evidence injection;
-- implementations of Strict Sync, Optimistic Immediate Delivery, and SAC/DIG;
+- implementations of TLS 1.3 Local Auth, TLS 1.3 + Sync Verifier, TLS 1.3 + Optimistic Delivery, TLS 1.3 + AppGate, and SAC/DIG;
+- mechanism ablations for Strict Sync, Optimistic Immediate Delivery, Ciphertext Queue, and SAC/DIG;
 - scripts to run latency, dirty-delivery, DIG memory, and Epoch-KEM experiments;
 - CSV output with the metrics above;
 - plotting scripts for the main figures;
@@ -247,6 +274,7 @@ Recommended first figures:
 2. TTFVD vs verifier latency.
 3. Dirty delivery rate vs stale evidence rate.
 4. Peak DIG memory vs verifier delay and burst size.
-5. Epoch-KEM bandwidth overhead vs entropy budget.
+5. TLS+AppGate vs SAC delivery safety and buffering overhead.
+6. Epoch-KEM bandwidth overhead vs entropy budget.
 
-The figures should make the core abstraction visible: strict verification sacrifices latency, optimistic delivery sacrifices safety, and SAC/DIG separates protected transport progress from authorized application delivery.
+The figures should make the core abstraction visible without relying on weak opponents: strict verification sacrifices latency, optimistic delivery sacrifices safety, TLS+AppGate shows the strongest application-level version of the pattern, and SAC/DIG defines the pattern as channel semantics.
