@@ -15,12 +15,12 @@ This plan describes a minimal distributed deployment for evaluating Atrium as a 
 The deployment should support industrial baselines and mechanism ablations. The primary baselines are:
 
 1. TLS 1.3 local authentication.
-2. TLS 1.3 plus synchronous external verifier.
-3. TLS 1.3 plus optimistic immediate application delivery.
-4. TLS 1.3 plus application gate.
+2. TLS 1.3 0-RTT, if supported by the selected TLS implementation.
+3. TLS 1.3 post-handshake authentication, if supported by the selected TLS implementation.
+4. TLS 1.3 plus an application-layer external verifier.
 5. SAC/DIG over the same workload and verifier schedule.
 
-The mechanism ablations are strict synchronous verification, optimistic immediate delivery, ciphertext queue, and SAC/DIG. These ablations explain causality, but the TLS variants provide the credible systems comparison.
+The mechanism ablations are strict synchronous verification, optimistic immediate delivery, ciphertext queue, and SAC/DIG. These ablations explain causality, but the standard TLS mechanisms and the TLS+external-verifier construction provide the credible systems comparison.
 
 ## 2. Minimal Topology
 
@@ -44,9 +44,9 @@ Run all four processes on localhost. This phase verifies message flow, state tra
 Required scenarios:
 
 - TLS 1.3 local authentication completes and delivers normally;
-- TLS 1.3 + synchronous verifier blocks delivery until verifier success;
-- TLS 1.3 + optimistic delivery produces invalid delivery under stale evidence;
-- TLS 1.3 + AppGate buffers and discards under stale evidence;
+- TLS 1.3 0-RTT is either implemented with a library that exposes early data or explicitly reported as unsupported;
+- TLS 1.3 post-handshake authentication is either implemented with a library that exposes it or explicitly reported as unsupported;
+- TLS 1.3 + app-layer external verifier withholds delivery until verifier success and discards on verifier failure;
 - fresh evidence succeeds before any data arrives;
 - cached evidence enters `SPECULATIVE`, then verifies;
 - cached evidence enters `SPECULATIVE`, then fails;
@@ -97,7 +97,7 @@ Required metrics:
 | `rollback_latency` | Verification failure to session abort and buffer clear. |
 | `abort_reason` | Verification failure, timeout, replay, epoch mismatch, DIG overflow, or parse/auth failure. |
 | `epoch_kem_count` | Number of epoch refreshes per session. |
-| `mode` | One of `tls_local`, `tls_sync_verifier`, `tls_optimistic`, `tls_app_gate`, `sac`, or a mechanism ablation. |
+| `mode` | One of `tls13_local_auth`, `tls13_0rtt`, `tls13_post_handshake_auth`, `tls13_app_external_verifier`, `sac`, or a mechanism ablation. |
 
 ## 5. Workloads
 
@@ -119,13 +119,13 @@ The expected qualitative behavior is:
 | Mode | Early cryptographic progress | Invalid delivery risk | Verifier latency exposure |
 | --- | --- | --- | --- |
 | TLS 1.3 local auth | yes | not modeled for external stale evidence | none unless external verifier is added |
-| TLS 1.3 + sync verifier | TLS progresses, application waits | no | high for application visibility |
-| TLS 1.3 + optimistic delivery | yes | yes under stale evidence | low |
-| TLS 1.3 + AppGate | yes | no if gate is correct | low for transport, high for verified delivery |
+| TLS 1.3 0-RTT | yes, for early data after resumption | replay and freshness constraints; not an external verifier solution | low for early data, but not tied to external verifier freshness |
+| TLS 1.3 post-handshake authentication | yes | depends on application policy after deferred auth | does not define external verifier delivery semantics by itself |
+| TLS 1.3 + app-layer external verifier | yes | no if application gate is correct | low for transport, high for verified delivery |
 | SAC/DIG | yes | no if DIG is correct | low for cryptographic progress, high for verified delivery |
 | Ciphertext queue ablation | no speculative decrypt/state advance | no | high for cryptographic progress |
 
-The paper should not claim that SAC beats TLS 1.3. TLS 1.3 local authentication is a mature lower-bound reference when authorization is locally available. The relevant comparison is delayed external authorization: TLS+Sync is safe but blocks visibility, TLS+Optimistic is unsafe under stale evidence, TLS+AppGate is the strongest practical baseline, and SAC/DIG formalizes the delivery boundary as channel semantics.
+The paper should not claim that SAC beats TLS 1.3. TLS 1.3 local authentication is a mature lower-bound reference when authorization is locally available. TLS 1.3 0-RTT and post-handshake authentication are standard mechanisms that must be discussed or measured when implementation support exists. The relevant delayed-external-authorization comparison is TLS+app-layer external verifier versus SAC/DIG.
 
 ## 7. Limitations
 

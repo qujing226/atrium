@@ -8,10 +8,10 @@ const (
 	ModeStrict Mode = iota
 	ModeOptimistic
 	ModeSAC
-	ModeTLSLocal
-	ModeTLSSyncVerifier
-	ModeTLSOptimisticDelivery
-	ModeTLSAppGate
+	ModeTLS13LocalAuth
+	ModeTLS13EarlyData0RTT
+	ModeTLS13PostHandshakeAuth
+	ModeTLS13AppLayerExternalVerifier
 	ModeCiphertextQueue
 )
 
@@ -50,14 +50,14 @@ func RunScenario(sc Scenario) Metrics {
 		return runOptimistic(sc, metrics)
 	case ModeSAC:
 		return runSAC(sc, metrics)
-	case ModeTLSLocal:
+	case ModeTLS13LocalAuth:
 		return runTLSLocal(sc, metrics)
-	case ModeTLSSyncVerifier:
-		return runStrict(sc, metrics)
-	case ModeTLSOptimisticDelivery:
-		return runOptimistic(sc, metrics)
-	case ModeTLSAppGate:
-		return runTLSAppGate(sc, metrics)
+	case ModeTLS13EarlyData0RTT:
+		return runTLSLocal(sc, metrics)
+	case ModeTLS13PostHandshakeAuth:
+		return runTLSLocal(sc, metrics)
+	case ModeTLS13AppLayerExternalVerifier:
+		return runTLSAppLayerExternalVerifier(sc, metrics)
 	case ModeCiphertextQueue:
 		return runCiphertextQueue(sc, metrics)
 	default:
@@ -128,7 +128,7 @@ func runSAC(sc Scenario, metrics Metrics) Metrics {
 	return metrics
 }
 
-func runTLSAppGate(sc Scenario, metrics Metrics) Metrics {
+func runTLSAppLayerExternalVerifier(sc Scenario, metrics Metrics) Metrics {
 	session := NewSession(sc.Config)
 	for i, payload := range sc.Workload {
 		_, err := session.ReceivePlaintext(Message{

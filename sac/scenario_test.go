@@ -95,7 +95,7 @@ func TestScenarioSACDeliversAfterValidVerification(t *testing.T) {
 	}
 }
 
-func TestTLSBaselinesExposeDelayedVerifierTradeoffs(t *testing.T) {
+func TestStandardTLSBaselinesAreNamedWithoutSyntheticPolicies(t *testing.T) {
 	workload := [][]byte{
 		[]byte("m1"),
 		[]byte("m2"),
@@ -103,7 +103,7 @@ func TestTLSBaselinesExposeDelayedVerifierTradeoffs(t *testing.T) {
 	verifierLatency := 250 * time.Millisecond
 
 	tlsLocal := RunScenario(Scenario{
-		Mode:            ModeTLSLocal,
+		Mode:            ModeTLS13LocalAuth,
 		VerifierLatency: verifierLatency,
 		EvidenceValid:   false,
 		Workload:        workload,
@@ -115,31 +115,8 @@ func TestTLSBaselinesExposeDelayedVerifierTradeoffs(t *testing.T) {
 		t.Fatalf("tls local invalid deliveries = %d, want 0", tlsLocal.InvalidDeliveries)
 	}
 
-	tlsSync := RunScenario(Scenario{
-		Mode:            ModeTLSSyncVerifier,
-		VerifierLatency: verifierLatency,
-		EvidenceValid:   true,
-		Workload:        workload,
-	})
-	if tlsSync.TimeToFirstFrame != verifierLatency {
-		t.Fatalf("tls sync TTFF = %s, want %s", tlsSync.TimeToFirstFrame, verifierLatency)
-	}
-	if tlsSync.TimeToFirstVerifiedDelivery != verifierLatency {
-		t.Fatalf("tls sync TTFVD = %s, want %s", tlsSync.TimeToFirstVerifiedDelivery, verifierLatency)
-	}
-
-	tlsOptimistic := RunScenario(Scenario{
-		Mode:            ModeTLSOptimisticDelivery,
-		VerifierLatency: verifierLatency,
-		EvidenceValid:   false,
-		Workload:        workload,
-	})
-	if tlsOptimistic.InvalidDeliveries != len(workload) {
-		t.Fatalf("tls optimistic invalid deliveries = %d, want %d", tlsOptimistic.InvalidDeliveries, len(workload))
-	}
-
-	tlsGate := RunScenario(Scenario{
-		Mode:            ModeTLSAppGate,
+	tlsExternalVerifier := RunScenario(Scenario{
+		Mode:            ModeTLS13AppLayerExternalVerifier,
 		VerifierLatency: verifierLatency,
 		EvidenceValid:   false,
 		Workload:        workload,
@@ -148,14 +125,14 @@ func TestTLSBaselinesExposeDelayedVerifierTradeoffs(t *testing.T) {
 			MaxBufferedBytes:    1024,
 		},
 	})
-	if tlsGate.TimeToFirstFrame != 0 {
-		t.Fatalf("tls app gate TTFF = %s, want 0", tlsGate.TimeToFirstFrame)
+	if tlsExternalVerifier.TimeToFirstFrame != 0 {
+		t.Fatalf("tls external verifier TTFF = %s, want 0", tlsExternalVerifier.TimeToFirstFrame)
 	}
-	if tlsGate.InvalidDeliveries != 0 {
-		t.Fatalf("tls app gate invalid deliveries = %d, want 0", tlsGate.InvalidDeliveries)
+	if tlsExternalVerifier.InvalidDeliveries != 0 {
+		t.Fatalf("tls external verifier invalid deliveries = %d, want 0", tlsExternalVerifier.InvalidDeliveries)
 	}
-	if !tlsGate.Aborted {
-		t.Fatalf("tls app gate aborted = false, want true")
+	if !tlsExternalVerifier.Aborted {
+		t.Fatalf("tls external verifier aborted = false, want true")
 	}
 }
 

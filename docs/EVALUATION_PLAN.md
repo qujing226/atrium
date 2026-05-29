@@ -77,12 +77,12 @@ TLS 1.3 is a required reference point, but it must be framed carefully. SAC is n
 | Name | Behavior | Purpose |
 | --- | --- | --- |
 | TLS 1.3 Local Auth | Standard TLS 1.3 with local certificate validation. | Industrial lower-bound reference for mature local-auth channels. |
-| TLS 1.3 + Sync Verifier | Establish TLS, then block application send/delivery until an external verifier accepts. | Strong safe baseline for delayed authorization. |
-| TLS 1.3 + Optimistic Delivery | Establish TLS, deliver immediately, and run external verification in the background. | Realistic unsafe optimization; exposes dirty delivery under stale evidence. |
-| TLS 1.3 + AppGate | Establish TLS, receive/decrypt records, but hold application delivery until verifier success. | Strongest practical baseline; tests whether SAC is more than ad hoc application buffering. |
-| SAC/DIG over the same transport | Establish provisional channel state, allow cryptographic progress, isolate plaintext behind DIG, and release only after verifier success. | Proposed channel semantics. |
+| TLS 1.3 0-RTT | Standard TLS 1.3 early data with session resumption. | Related standard mechanism for early application data; evaluate replay and freshness limitations separately. |
+| TLS 1.3 Post-Handshake Authentication | Standard TLS 1.3 mechanism for requesting client authentication after the handshake. | Related standard mechanism for deferred peer authentication. |
+| TLS 1.3 + App-Layer External Verifier | Standard TLS 1.3 transport plus an application-layer verifier for DID, attestation, or another external authorization source. | Practical baseline for systems that add delayed authorization above TLS. |
+| SAC/DIG over the same workload | Establish provisional channel state, allow cryptographic progress, isolate plaintext behind DIG, and release only after verifier success. | Proposed channel semantics. |
 
-`TLS 1.3 + AppGate` is the most important adversarial baseline. If SAC only matches this baseline on latency and safety, the result should be stated honestly: the contribution is not raw speed over TLS, but a formal channel abstraction, explicit rollback semantics, and a reusable delivery boundary that can be instantiated beyond TLS.
+`TLS 1.3 + App-Layer External Verifier` is not a TLS standard mode. It is a realistic application construction: the transport is standard TLS 1.3, while the delayed verifier and delivery policy live above TLS. This is the baseline that tests whether SAC is more than ad hoc application buffering.
 
 ### 3.2 Mechanism Ablations
 
@@ -236,30 +236,30 @@ Each experiment should report:
 
 Experiments comparing multiple protocols MUST use the same workload, verifier delay trace, key-rotation schedule, and network topology.
 
-For TLS comparisons, all variants MUST use the same TLS configuration, cipher suite policy, certificate size, application payloads, verifier delay trace, and network topology. The only intended difference between `TLS 1.3 + Sync Verifier`, `TLS 1.3 + Optimistic Delivery`, and `TLS 1.3 + AppGate` is when application delivery becomes visible relative to external verifier completion.
+For TLS comparisons, all implemented variants MUST use the same TLS configuration, cipher suite policy, certificate size, application payloads, verifier delay trace, and network topology. TLS 1.3 0-RTT and TLS 1.3 post-handshake authentication MUST be evaluated as standard TLS mechanisms, not as custom SAC policies. If the selected TLS library does not expose these features, the artifact MUST report them as unsupported rather than emulating them under misleading names.
 
 ## 8. Expected Results
 
 The expected qualitative results are:
 
-| Scenario | TLS Local | TLS+Sync | TLS+Optimistic | TLS+AppGate | SAC/DIG |
+| Scenario | TLS Local | TLS 0-RTT | TLS PHA | TLS+External Verifier | SAC/DIG |
 | --- | --- | --- | --- | --- | --- |
-| No delayed verifier | Strong performance reference. | Adds little overhead if verifier is local. | Similar to local. | Similar to local plus gate overhead. | Comparable only if instantiated over a similar transport. |
-| Increasing verifier latency | Not applicable unless external verifier is added. | Application visibility grows with verifier latency. | Application visibility stays low but may be unsafe. | Protected transport progresses; delivery waits. | Protected transport progresses; delivery waits. |
-| Stale cached evidence | Not modeled by local certificate validation. | No dirty delivery; startup or delivery blocks. | Dirty delivery rate tracks stale rate. | Invalid sessions discard buffered plaintext. | Invalid sessions abort without dirty delivery. |
-| Burst before verification | Not applicable. | Burst is delayed before delivery. | Burst is delivered immediately, including invalid data. | Burst is buffered at application gate. | Burst is isolated in DIG. |
-| Proof starvation | Not applicable. | Blocks or times out before delivery. | May deliver before proof arrives. | Gate times out and discards. | DIG times out and aborts. |
+| No delayed external verifier | Strong performance reference. | Early data reference with replay constraints. | Deferred client-auth reference. | Similar to local plus verifier overhead. | Comparable only if instantiated over a similar transport. |
+| Increasing external verifier latency | Not applicable unless external verifier is added. | Does not solve external verifier freshness by itself. | Defers client auth but does not define external verifier delivery semantics. | Delivery waits for application verifier. | Protected transport progresses; delivery waits. |
+| Stale external evidence | Not modeled by local certificate validation. | Not solved by standard early data. | Not solved unless the external evidence is tied to PHA policy. | Invalid sessions discard or withhold application data. | Invalid sessions abort without dirty delivery. |
+| Burst before verification | Not applicable. | Early data may be accepted before full handshake but has replay limits. | Application policy still required. | Application layer buffers or withholds delivery. | DIG isolates plaintext. |
+| Proof starvation | Not applicable. | Not an external verifier mechanism. | Not an external verifier liveness mechanism. | Application policy times out and discards. | DIG times out and aborts. |
 
 The key result is not that SAC always minimizes application-visible delivery latency. SAC may delay delivery until verification. The key result is that it preserves transport progress and cryptographic continuity while preventing invalid application-visible semantic effects.
 
-The TLS+AppGate comparison should be interpreted as follows: if it performs similarly to SAC, that is evidence that the semantic pattern is practical over mature secure channels. SAC's contribution is then the abstraction, state machine, rollback rule, and portability of the pattern, not an artificial claim of outperforming TLS.
+The TLS+External Verifier comparison should be interpreted as follows: if it performs similarly to SAC, that is evidence that the semantic pattern is practical over mature secure channels. SAC's contribution is then the abstraction, state machine, rollback rule, and portability of the pattern, not an artificial claim of outperforming TLS.
 
 ## 9. Minimum Reproducible Artifact
 
 A minimum artifact should include:
 
 - a deterministic verifier with configurable delay and stale-evidence injection;
-- implementations of TLS 1.3 Local Auth, TLS 1.3 + Sync Verifier, TLS 1.3 + Optimistic Delivery, TLS 1.3 + AppGate, and SAC/DIG;
+- implementations of TLS 1.3 Local Auth, TLS 1.3 0-RTT when supported by the chosen TLS library, TLS 1.3 post-handshake authentication when supported, TLS 1.3 + App-Layer External Verifier, and SAC/DIG;
 - mechanism ablations for Strict Sync, Optimistic Immediate Delivery, Ciphertext Queue, and SAC/DIG;
 - scripts to run latency, dirty-delivery, DIG memory, and Epoch-KEM experiments;
 - CSV output with the metrics above;
@@ -274,7 +274,7 @@ Recommended first figures:
 2. TTFVD vs verifier latency.
 3. Dirty delivery rate vs stale evidence rate.
 4. Peak DIG memory vs verifier delay and burst size.
-5. TLS+AppGate vs SAC delivery safety and buffering overhead.
+5. TLS+External Verifier vs SAC delivery safety and buffering overhead.
 6. Epoch-KEM bandwidth overhead vs entropy budget.
 
-The figures should make the core abstraction visible without relying on weak opponents: strict verification sacrifices latency, optimistic delivery sacrifices safety, TLS+AppGate shows the strongest application-level version of the pattern, and SAC/DIG defines the pattern as channel semantics.
+The figures should make the core abstraction visible without relying on weak opponents: standard TLS mechanisms provide industrial reference points, TLS+External Verifier shows the practical application-layer construction, and SAC/DIG defines the delayed-authorization pattern as channel semantics.
